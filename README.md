@@ -7,6 +7,18 @@ A professional paper trading platform for NIFTY options with real-time data inte
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-green)
 ![Database](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
+
+
+docker-compose up -d postgres redis
+
+cd backend; .\venv\Scripts\Activate.ps1; uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+cd frontend 
+npm run dev
+
+
+
+
 ## ✨ Features
 
 ### 📊 Options Chain
@@ -347,5 +359,6 @@ For issues and questions:
 **Built with ❤️ for traders who want to learn and practice options trading**
 
 **Happy Trading! 🚀📈**
-#   N i f t y - T o u r n a m e n t  
+#   N i f t y - T o u r n a m e n t 
+ 
  

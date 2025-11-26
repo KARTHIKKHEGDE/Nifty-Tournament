@@ -3,7 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { CandleData } from '../../types';
-import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import {
+    Plus, Minus, TrendingUp, TrendingDown, Move, MousePointer2,
+    Pencil, Ruler, Circle, Square, Triangle, Type, Trash2,
+    Undo, Redo, Settings, ChevronLeft, ChevronRight, Activity
+} from 'lucide-react';
 
 interface KlineChartProps {
     data: CandleData[];
@@ -13,40 +17,28 @@ interface KlineChartProps {
     onLoadMore?: () => void;
 }
 
-function KlineChartComponent({ data, symbol, showVolume = false, height = 600, onLoadMore }: KlineChartProps) {
+function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore }: KlineChartProps) {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
     const [currentPrice, setCurrentPrice] = useState<number>(0);
     const [priceChange, setPriceChange] = useState<number>(0);
     const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
-    const [activeIndicators, setActiveIndicators] = useState<string[]>(['MA']);
+    const [activeIndicators, setActiveIndicators] = useState<string[]>([]);
     const [chartReady, setChartReady] = useState(false);
+    const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
+    const [activeTool, setActiveTool] = useState<string>('cursor');
+    const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
 
     useEffect(() => {
-        console.log('Chart init useEffect triggered, chartRef.current:', !!chartRef.current);
-        if (!chartRef.current) {
-            console.log('No chartRef, returning');
-            return;
-        }
+        if (!chartRef.current) return;
 
         let disposeFunc: any = null;
         let mounted = true;
 
-        console.log('Loading klinecharts...');
         import('klinecharts').then(({ init, dispose }) => {
-            console.log('Klinecharts loaded successfully');
-            if (!chartRef.current || !mounted) {
-                console.log('chartRef lost or unmounted during import');
-                return;
-            }
+            if (!chartRef.current || !mounted) return;
 
             disposeFunc = dispose;
-
-            console.log('Initializing chart with container:', chartRef.current);
-            console.log('Container dimensions:', {
-                width: chartRef.current.offsetWidth,
-                height: chartRef.current.offsetHeight
-            });
 
             try {
                 chartInstance.current = init(chartRef.current, {
@@ -56,38 +48,38 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                             horizontal: {
                                 show: true,
                                 size: 1,
-                                color: '#1e293b',
-                                style: 'solid',
+                                color: '#1a1a1a',
+                                style: 'dashed',
                             },
                             vertical: {
                                 show: true,
                                 size: 1,
-                                color: '#1e293b',
-                                style: 'solid',
+                                color: '#1a1a1a',
+                                style: 'dashed',
                             },
                         },
                         candle: {
                             type: 'candle_solid',
                             bar: {
-                                upColor: '#22c55e',
-                                downColor: '#ef4444',
-                                noChangeColor: '#64748b',
-                                upBorderColor: '#22c55e',
-                                downBorderColor: '#ef4444',
-                                noChangeBorderColor: '#64748b',
-                                upWickColor: '#22c55e',
-                                downWickColor: '#ef4444',
-                                noChangeWickColor: '#64748b',
+                                upColor: '#26a69a',
+                                downColor: '#ef5350',
+                                noChangeColor: '#888888',
+                                upBorderColor: '#26a69a',
+                                downBorderColor: '#ef5350',
+                                noChangeBorderColor: '#888888',
+                                upWickColor: '#26a69a',
+                                downWickColor: '#ef5350',
+                                noChangeWickColor: '#888888',
                             },
                             tooltip: {
                                 showRule: 'always',
                                 showType: 'standard',
-                                labels: ['O: ', 'H: ', 'L: ', 'C: ', 'Vol: '],
+                                labels: ['O', 'H', 'L', 'C'],
                                 text: {
-                                    size: 12,
-                                    family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-                                    weight: '500',
-                                    color: '#e2e8f0',
+                                    size: 11,
+                                    family: 'Arial, sans-serif',
+                                    weight: 'normal',
+                                    color: '#ffffff',
                                 },
                             },
                         },
@@ -96,27 +88,27 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                                 showRule: 'always',
                                 showType: 'standard',
                                 text: {
-                                    size: 12,
-                                    family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-                                    weight: '500',
-                                    color: '#e2e8f0',
+                                    size: 11,
+                                    family: 'Arial, sans-serif',
+                                    weight: 'normal',
+                                    color: '#ffffff',
                                 },
                             },
                             bars: [
                                 {
                                     style: 'solid',
-                                    color: '#3b82f6',
-                                    size: 2,
+                                    color: '#2962ff',
+                                    size: 1,
                                 },
                                 {
                                     style: 'solid',
-                                    color: '#f59e0b',
-                                    size: 2,
+                                    color: '#ff6d00',
+                                    size: 1,
                                 },
                                 {
                                     style: 'solid',
-                                    color: '#8b5cf6',
-                                    size: 2,
+                                    color: '#ab47bc',
+                                    size: 1,
                                 },
                             ],
                         },
@@ -124,21 +116,18 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                             show: true,
                             axisLine: {
                                 show: true,
-                                color: '#334155',
+                                color: '#2a2a2a',
                                 size: 1,
                             },
                             tickLine: {
-                                show: true,
-                                length: 4,
-                                color: '#334155',
-                                size: 1,
+                                show: false,
                             },
                             tickText: {
                                 show: true,
-                                color: '#94a3b8',
-                                family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                                color: '#888888',
+                                family: 'Arial, sans-serif',
                                 size: 11,
-                                weight: '500',
+                                weight: 'normal',
                             },
                         },
                         yAxis: {
@@ -149,21 +138,18 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                             reverse: false,
                             axisLine: {
                                 show: true,
-                                color: '#334155',
+                                color: '#2a2a2a',
                                 size: 1,
                             },
                             tickLine: {
-                                show: true,
-                                length: 4,
-                                color: '#334155',
-                                size: 1,
+                                show: false,
                             },
                             tickText: {
                                 show: true,
-                                color: '#94a3b8',
-                                family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                                color: '#888888',
+                                family: 'Arial, sans-serif',
                                 size: 11,
-                                weight: '500',
+                                weight: 'normal',
                             },
                         },
                         crosshair: {
@@ -172,78 +158,64 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                                 show: true,
                                 line: {
                                     show: true,
-                                    style: 'solid',
-                                    dashValue: [4, 4],
+                                    style: 'dashed',
+                                    dashValue: [4, 2],
                                     size: 1,
-                                    color: '#3b82f6',
+                                    color: '#888888',
                                 },
                                 text: {
                                     show: true,
                                     color: '#ffffff',
                                     size: 11,
-                                    family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-                                    weight: '600',
-                                    backgroundColor: '#3b82f6',
-                                    borderRadius: 4,
-                                    paddingLeft: 8,
-                                    paddingRight: 8,
-                                    paddingTop: 4,
-                                    paddingBottom: 4,
+                                    family: 'Arial, sans-serif',
+                                    weight: 'normal',
+                                    backgroundColor: '#888888',
+                                    borderRadius: 2,
+                                    paddingLeft: 4,
+                                    paddingRight: 4,
+                                    paddingTop: 2,
+                                    paddingBottom: 2,
                                 },
                             },
                             vertical: {
                                 show: true,
                                 line: {
                                     show: true,
-                                    style: 'solid',
-                                    dashValue: [4, 4],
+                                    style: 'dashed',
+                                    dashValue: [4, 2],
                                     size: 1,
-                                    color: '#3b82f6',
+                                    color: '#888888',
                                 },
                                 text: {
                                     show: true,
                                     color: '#ffffff',
                                     size: 11,
-                                    family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-                                    weight: '600',
-                                    backgroundColor: '#3b82f6',
-                                    borderRadius: 4,
-                                    paddingLeft: 8,
-                                    paddingRight: 8,
-                                    paddingTop: 4,
-                                    paddingBottom: 4,
+                                    family: 'Arial, sans-serif',
+                                    weight: 'normal',
+                                    backgroundColor: '#888888',
+                                    borderRadius: 2,
+                                    paddingLeft: 4,
+                                    paddingRight: 4,
+                                    paddingTop: 2,
+                                    paddingBottom: 2,
                                 },
                             },
                         },
                     },
                 });
 
-                console.log('Chart initialized:', chartInstance.current);
-
-                chartInstance.current.createIndicator('MA', true, {
-                    id: 'candle_pane',
-                    calcParams: [5, 10, 20, 30],
-                });
-                console.log('MA indicator created');
-
                 if (showVolume) {
                     chartInstance.current.createIndicator('VOL', false, {
                         id: 'volume_pane',
+                        height: 80,
                     });
-                    console.log('VOL indicator created');
                 }
 
                 setChartReady(true);
-                console.log('Chart ready set to true');
 
-                // Setup lazy loading
                 if (onLoadMore) {
                     chartInstance.current.setLoadMoreDataCallback(({ timestamp }: { timestamp: number }) => {
-                        console.log('Load more triggered at timestamp:', timestamp);
                         onLoadMore();
-                        // Return null to stop internal loading animation if any, 
-                        // or we could return a promise if we wanted to handle it strictly inside.
-                        // Since we update props, we return null here and let the prop update handle new data.
                         return null;
                     });
                 }
@@ -265,8 +237,6 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
     useEffect(() => {
         if (chartInstance.current && data.length > 0 && chartReady) {
-            console.log('Applying data to chart:', data.length, 'candles');
-
             const formattedData = data.map((candle) => ({
                 timestamp: candle.timestamp,
                 open: candle.open,
@@ -276,11 +246,8 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                 volume: candle.volume || 0,
             }));
 
-            console.log('Formatted data sample:', formattedData[0]);
-
             try {
                 chartInstance.current.applyNewData(formattedData);
-                console.log('Chart data applied successfully');
             } catch (error) {
                 console.error('Error applying chart data:', error);
             }
@@ -293,14 +260,7 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                 const changePercent = (change / firstCandle.open) * 100;
                 setPriceChange(change);
                 setPriceChangePercent(changePercent);
-                console.log('Price updated:', latestCandle.close);
             }
-        } else {
-            console.log('Chart not ready or no data:', {
-                hasChart: !!chartInstance.current,
-                dataLength: data.length,
-                chartReady
-            });
         }
     }, [data, chartReady]);
 
@@ -317,11 +277,11 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
             switch (indicatorName) {
                 case 'MA':
-                    calcParams = [5, 10, 20, 30];
+                    calcParams = [9];
                     isOverlay = true;
                     break;
                 case 'EMA':
-                    calcParams = [9, 12, 26];
+                    calcParams = [9, 21];
                     isOverlay = true;
                     break;
                 case 'BOLL':
@@ -347,138 +307,213 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
             setActiveIndicators([...activeIndicators, indicatorName]);
         }
+        setShowIndicatorMenu(false);
     };
 
     const isPriceUp = priceChange >= 0;
+    const timeframes = ['5y', '1y', '3m', '1m', '5d', '1d'];
 
     return (
-        <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl overflow-hidden border border-slate-700/50 shadow-2xl">
-            <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-md border-b border-slate-700/50">
-                <div className="flex items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                                <Activity className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-white tracking-tight">{symbol}</h3>
-                                <p className="text-xs text-slate-400 font-medium">Live Chart</p>
-                            </div>
-                        </div>
+        <div className="relative bg-[#0a0a0a] overflow-hidden" style={{ height: `${height}px` }}>
+            {/* Left Toolbar */}
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#131722] border-r border-[#2a2e39] z-20 flex flex-col items-center py-4 gap-1">
+                <button
+                    onClick={() => setActiveTool('cursor')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'cursor' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Cursor"
+                >
+                    <MousePointer2 className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={() => setActiveTool('crosshair')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'crosshair' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Crosshair"
+                >
+                    <Plus className="w-4 h-4" />
+                </button>
 
-                        {currentPrice > 0 && (
-                            <div className="flex items-center gap-4 pl-6 border-l border-slate-700">
-                                <div>
-                                    <p className="text-2xl font-bold text-white tabular-nums">
-                                        ₹{currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        {isPriceUp ? (
-                                            <TrendingUp className="w-4 h-4 text-green-500" />
-                                        ) : (
-                                            <TrendingDown className="w-4 h-4 text-red-500" />
-                                        )}
-                                        <span className={`text-sm font-semibold tabular-nums ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
-                                            {isPriceUp ? '+' : ''}{priceChange.toFixed(2)} ({isPriceUp ? '+' : ''}{priceChangePercent.toFixed(2)}%)
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                <div className="w-8 h-px bg-[#2a2e39] my-2"></div>
 
+                <button
+                    onClick={() => setActiveTool('trendline')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'trendline' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Trend Line"
+                >
+                    <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={() => setActiveTool('horizontal')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'horizontal' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Horizontal Line"
+                >
+                    <Minus className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={() => setActiveTool('rectangle')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'rectangle' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Rectangle"
+                >
+                    <Square className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={() => setActiveTool('circle')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'circle' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                        }`}
+                    title="Circle"
+                >
+                    <Circle className="w-4 h-4" />
+                </button>
+
+                <div className="w-8 h-px bg-[#2a2e39] my-2"></div>
+
+                <button
+                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
+                    title="Measure"
+                >
+                    <Ruler className="w-4 h-4" />
+                </button>
+                <button
+                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
+                    title="Zoom In"
+                >
+                    <Plus className="w-4 h-4" />
+                </button>
+                <button
+                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
+                    title="Zoom Out"
+                >
+                    <Minus className="w-4 h-4" />
+                </button>
+
+                <div className="flex-1"></div>
+
+                <button
+                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
+                    title="Settings"
+                >
+                    <Settings className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Top Header */}
+            <div className="absolute top-0 left-12 right-0 h-12 bg-[#131722] border-b border-[#2a2e39] z-10 flex items-center justify-between px-4">
+                {/* Left: Symbol and Price Info */}
+                <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <div className="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                            <span className="text-xs font-semibold text-slate-300">Candlestick</span>
-                        </div>
+                        <h3 className="text-white font-semibold text-sm">{symbol}</h3>
+                        <span className="text-[#787b86] text-xs">NSE</span>
+                    </div>
 
+                    {currentPrice > 0 && (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-sm font-semibold ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
+                                    {currentPrice.toFixed(2)}
+                                </span>
+                                <span className={`text-xs ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
+                                    {isPriceUp ? '+' : ''}{priceChange.toFixed(2)}
+                                </span>
+                                <span className={`text-xs ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
+                                    ({isPriceUp ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+                                </span>
+                            </div>
+                            <div className="text-[#787b86] text-xs">
+                                Volume SMA 9 <span className="text-[#ef5350]">91.036K</span>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Center: Timeframe Selector */}
+                <div className="flex items-center gap-1">
+                    {timeframes.map((tf) => (
                         <button
-                            onClick={() => toggleIndicator('MA')}
-                            className={`px-3 py-1.5 rounded-lg border transition-colors ${activeIndicators.includes('MA')
-                                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
-                                : 'bg-slate-800/50 border-slate-700/30 text-slate-400 hover:border-slate-600'
+                            key={tf}
+                            onClick={() => setSelectedTimeframe(tf)}
+                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${selectedTimeframe === tf
+                                ? 'bg-[#2962ff] text-white'
+                                : 'text-[#787b86] hover:bg-[#1e222d]'
                                 }`}
                         >
-                            <span className="text-xs font-semibold">MA</span>
+                            {tf}
                         </button>
+                    ))}
+                </div>
 
+                {/* Right: Indicators and Actions */}
+                <div className="flex items-center gap-2">
+                    <div className="relative">
                         <button
-                            onClick={() => toggleIndicator('EMA')}
-                            className={`px-3 py-1.5 rounded-lg border transition-colors ${activeIndicators.includes('EMA')
-                                ? 'bg-purple-500/10 border-purple-500/30 text-purple-400'
-                                : 'bg-slate-800/50 border-slate-700/30 text-slate-400 hover:border-slate-600'
-                                }`}
+                            onClick={() => setShowIndicatorMenu(!showIndicatorMenu)}
+                            className="px-3 py-1.5 text-xs font-medium text-[#787b86] hover:bg-[#1e222d] rounded transition-colors flex items-center gap-1"
                         >
-                            <span className="text-xs font-semibold">EMA</span>
+                            <Activity className="w-3.5 h-3.5" />
+                            Indicators
                         </button>
 
-                        <button
-                            onClick={() => toggleIndicator('BOLL')}
-                            className={`px-3 py-1.5 rounded-lg border transition-colors ${activeIndicators.includes('BOLL')
-                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                                : 'bg-slate-800/50 border-slate-700/30 text-slate-400 hover:border-slate-600'
-                                }`}
-                        >
-                            <span className="text-xs font-semibold">BB</span>
-                        </button>
-
-                        <button
-                            onClick={() => toggleIndicator('RSI')}
-                            className={`px-3 py-1.5 rounded-lg border transition-colors ${activeIndicators.includes('RSI')
-                                ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                                : 'bg-slate-800/50 border-slate-700/30 text-slate-400 hover:border-slate-600'
-                                }`}
-                        >
-                            <span className="text-xs font-semibold">RSI</span>
-                        </button>
-
-                        <button
-                            onClick={() => toggleIndicator('MACD')}
-                            className={`px-3 py-1.5 rounded-lg border transition-colors ${activeIndicators.includes('MACD')
-                                ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
-                                : 'bg-slate-800/50 border-slate-700/30 text-slate-400 hover:border-slate-600'
-                                }`}
-                        >
-                            <span className="text-xs font-semibold">MACD</span>
-                        </button>
-
-                        {showVolume && (
-                            <div className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30">
-                                <span className="text-xs font-semibold text-purple-400">Volume</span>
+                        {showIndicatorMenu && (
+                            <div className="absolute top-full right-0 mt-1 w-48 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1">
+                                <button
+                                    onClick={() => toggleIndicator('MA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'
+                                        }`}
+                                >
+                                    Moving Average
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('EMA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'
+                                        }`}
+                                >
+                                    EMA
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('BOLL')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'
+                                        }`}
+                                >
+                                    Bollinger Bands
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('RSI')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'
+                                        }`}
+                                >
+                                    RSI
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('MACD')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'
+                                        }`}
+                                >
+                                    MACD
+                                </button>
                             </div>
                         )}
                     </div>
+
+                    <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#26a69a] text-white text-xs font-bold hover:bg-[#1f8a7f] transition-colors">
+                        B
+                    </button>
+                    <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ef5350] text-white text-xs font-bold hover:bg-[#d84946] transition-colors">
+                        S
+                    </button>
                 </div>
             </div>
 
-            <div className="pt-20">
-                <div ref={chartRef} style={{ height: `${height}px`, width: '100%' }} />
+            {/* Chart Area */}
+            <div className="absolute top-12 left-12 right-0 bottom-0">
+                <div ref={chartRef} className="w-full h-full" />
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-md border-t border-slate-700/50">
-                <div className="flex items-center justify-between px-6 py-3">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="font-medium">Real-time Data</span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Scroll</kbd>
-                            <span>Zoom</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Drag</kbd>
-                            <span>Pan</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Click</kbd>
-                            <span>Crosshair</span>
-                        </div>
-                    </div>
-                </div>
+            {/* Bottom Time Info */}
+            <div className="absolute bottom-2 right-4 text-[#787b86] text-xs z-10">
+                21:42:39 (UTC+5:30)
             </div>
         </div>
     );
@@ -488,8 +523,8 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 export default dynamic(() => Promise.resolve(KlineChartComponent), {
     ssr: false,
     loading: () => (
-        <div className="flex items-center justify-center h-[600px] bg-slate-900 rounded-xl">
-            <div className="text-slate-400">Loading chart...</div>
+        <div className="flex items-center justify-center h-[600px] bg-[#0a0a0a]">
+            <div className="text-[#787b86]">Loading chart...</div>
         </div>
     ),
 });
