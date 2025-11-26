@@ -182,10 +182,16 @@ export interface OptionsChain {
 export enum WSMessageType {
     SUBSCRIBE = 'subscribe',
     UNSUBSCRIBE = 'unsubscribe',
+    SUBSCRIBED = 'subscribed',
+    UNSUBSCRIBED = 'unsubscribed',
+    CONNECTED = 'connected',
+    TICK = 'tick',
     PRICE_UPDATE = 'price_update',
     OPTIONS_UPDATE = 'options_update',
     ORDER_UPDATE = 'order_update',
     POSITION_UPDATE = 'position_update',
+    PING = 'ping',
+    PONG = 'pong',
     ERROR = 'error'
 }
 

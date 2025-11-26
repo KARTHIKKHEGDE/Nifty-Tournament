@@ -68,6 +68,17 @@ async def handle_subscribe(user_id: int, data: Dict[str, Any]):
     
     manager.subscribe(user_id, symbol)
     
+    # Start price simulator for this symbol (for testing)
+    from app.services.price_simulator import get_simulator
+    simulator = get_simulator()
+    
+    # Extract base price if provided, otherwise use default
+    base_price = data.get("base_price", 100.0)
+    simulator.add_symbol(symbol, base_price)
+    
+    # Start simulator if not already running
+    await simulator.start()
+    
     await manager.send_personal_message({
         "type": "subscribed",
         "symbol": symbol,
