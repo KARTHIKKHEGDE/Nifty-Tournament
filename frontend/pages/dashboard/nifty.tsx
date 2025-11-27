@@ -5,6 +5,7 @@ import SymbolTabs from '../../components/trading/SymbolTabs';
 import TimeframeSelector from '../../components/trading/TimeframeSelector';
 import OrdersHistory from '../../components/trading/OrdersHistory';
 import PositionsTable from '../../components/trading/PositionsTable';
+import OptionsChain from '../../components/options/OptionsChain';
 import Loader from '../../components/common/Loader';
 import { useTradingStore } from '../../stores/tradingStore';
 import { useUserStore } from '../../stores/userStore';
@@ -31,6 +32,11 @@ export default function NiftyTradingPage() {
     const [isLoadingCandles, setIsLoadingCandles] = useState(true);
     const [wsConnected, setWsConnected] = useState(false);
     const [instrumentToken, setInstrumentToken] = useState<number | null>(null);
+    const [activeTab, setActiveTab] = useState<'chart' | 'optionchain'>('chart');
+    const [optionsData, setOptionsData] = useState<{ calls: any[]; puts: any[] }>({
+        calls: [],
+        puts: [],
+    });
 
     // Fetch instrument token for current symbol
     const fetchInstrumentToken = async (symbol: string) => {
@@ -98,6 +104,71 @@ export default function NiftyTradingPage() {
         loadCandles(400, true);
     };
 
+    // Fetch options chain data
+    const fetchOptionsChain = async () => {
+        try {
+            const backendSymbol = currentSymbol.includes('NIFTY') ? 'NIFTY' : 'BANKNIFTY';
+            const response = await tradingService.getOptionsChain(backendSymbol);
+
+            // Get all unique strikes and sort them
+            const allStrikes = new Set<number>();
+            response.ce_options?.forEach((opt: any) => allStrikes.add(opt.strike));
+            response.pe_options?.forEach((opt: any) => allStrikes.add(opt.strike));
+            const sortedStrikes = Array.from(allStrikes).sort((a, b) => a - b);
+
+            // Find ATM strike index (closest to spot price)
+            let atmIndex = 0;
+            let minDiff = Number.MAX_VALUE;
+
+            sortedStrikes.forEach((strike, index) => {
+                const diff = Math.abs(strike - response.spot_price);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    atmIndex = index;
+                }
+            });
+
+            // Filter strikes (10 above and 10 below ATM)
+            const startIdx = Math.max(0, atmIndex - 10);
+            const endIdx = Math.min(sortedStrikes.length, atmIndex + 11);
+            const allowedStrikes = new Set(sortedStrikes.slice(startIdx, endIdx));
+
+            // Transform and filter API data
+            const calls = response.ce_options
+                .filter((opt: any) => allowedStrikes.has(opt.strike))
+                .map((opt: any) => ({
+                    symbol: opt.tradingsymbol,
+                    strike_price: opt.strike,
+                    expiry_date: opt.expiry,
+                    option_type: 'CE',
+                    ltp: opt.ltp,
+                    open_interest: opt.oi,
+                    change_percent: opt.change,
+                    volume: opt.volume,
+                    instrument_token: opt.instrument_token,
+                }));
+
+            const puts = response.pe_options
+                .filter((opt: any) => allowedStrikes.has(opt.strike))
+                .map((opt: any) => ({
+                    symbol: opt.tradingsymbol,
+                    strike_price: opt.strike,
+                    expiry_date: opt.expiry,
+                    option_type: 'PE',
+                    ltp: opt.ltp,
+                    open_interest: opt.oi,
+                    change_percent: opt.change,
+                    volume: opt.volume,
+                    instrument_token: opt.instrument_token,
+                }));
+
+            setOptionsData({ calls, puts });
+        } catch (error) {
+            console.error('Failed to fetch options chain:', error);
+        }
+    };
+
+
     // Initialize WebSocket connection
     useEffect(() => {
         const token = authService.getToken();
@@ -110,7 +181,10 @@ export default function NiftyTradingPage() {
                 websocketService.subscribe(currentSymbol);
             })
             .catch((error) => {
-                console.error('WebSocket connection failed:', error);
+                // Only log if it's not a "connection in progress" error
+                if (!error.message?.includes('already in progress')) {
+                    console.error('WebSocket connection failed:', error);
+                }
             });
 
         // Handle price updates
@@ -176,46 +250,82 @@ export default function NiftyTradingPage() {
                 {/* Symbol Tabs */}
                 <SymbolTabs selected={currentSymbol} onChange={setCurrentSymbol} />
 
+                {/* Chart / Option Chain Tabs */}
+                <div className="flex gap-6 border-b border-gray-700">
+                    <button
+                        onClick={() => setActiveTab('chart')}
+                        className={`py-3 px-1 text-sm font-medium transition-colors ${activeTab === 'chart'
+                            ? 'text-blue-400 border-b-2 border-blue-400'
+                            : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                    >
+                        Chart
+                    </button>
+                    <button
+                        onClick={() => {
+                            setActiveTab('optionchain');
+                            fetchOptionsChain();
+                        }}
+                        className={`py-3 px-1 text-sm font-medium transition-colors ${activeTab === 'optionchain'
+                            ? 'text-orange-400 border-b-2 border-orange-400'
+                            : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                    >
+                        Option chain
+                    </button>
+                </div>
+
                 {/* Main Trading Interface */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Chart Section (3 columns) */}
+                    {/* Chart/Option Chain Section (3 columns) */}
                     <div className="lg:col-span-3 space-y-4">
-                        {/* Timeframe Selector */}
-                        <div className="flex items-center justify-between">
-                            <TimeframeSelector
-                                selected={currentTimeframe}
-                                onChange={setCurrentTimeframe}
-                            />
+                        {activeTab === 'chart' ? (
+                            <>
+                                {/* Timeframe Selector */}
+                                <div className="flex items-center justify-between">
+                                    <TimeframeSelector
+                                        selected={currentTimeframe}
+                                        onChange={setCurrentTimeframe}
+                                    />
 
-                            {/* Current Price Display */}
-                            <div className="bg-gray-800 px-6 py-3 rounded-lg">
-                                <p className="text-sm text-gray-400 mb-1">Current Price</p>
-                                <p className="text-2xl font-bold text-white">
-                                    ₹{currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                        </div>
+                                    {/* Current Price Display */}
+                                    <div className="bg-gray-800 px-6 py-3 rounded-lg">
+                                        <p className="text-sm text-gray-400 mb-1">Current Price</p>
+                                        <p className="text-2xl font-bold text-white">
+                                            ₹{currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Chart */}
-                        {isLoadingCandles ? (
-                            <div className="bg-gray-800 rounded-lg flex items-center justify-center" style={{ height: '600px' }}>
-                                <Loader text="Loading chart data..." />
-                            </div>
+                                {/* Chart */}
+                                {isLoadingCandles ? (
+                                    <div className="bg-gray-800 rounded-lg flex items-center justify-center" style={{ height: '600px' }}>
+                                        <Loader text="Loading chart data..." />
+                                    </div>
+                                ) : (
+                                    <KlineChart
+                                        data={candles}
+                                        symbol={currentSymbol}
+                                        showVolume={false} // NIFTY index doesn't have volume
+                                        height={600}
+                                        onLoadMore={handleLoadMore}
+                                        isNiftyChart={true} // NIFTY is view-only, no Buy/Sell
+                                    />
+                                )}
+
+                                {/* Orders History Button */}
+                                <div className="flex justify-center">
+                                    <OrdersHistory refreshTrigger={orderRefreshTrigger} />
+                                </div>
+                            </>
                         ) : (
-                            <KlineChart
-                                data={candles}
-                                symbol={currentSymbol}
-                                showVolume={false} // NIFTY index doesn't have volume
-                                height={600}
-                                onLoadMore={handleLoadMore}
-                                isNiftyChart={true} // NIFTY is view-only, no Buy/Sell
+                            /* Option Chain View */
+                            <OptionsChain
+                                spotPrice={currentPrice}
+                                calls={optionsData.calls}
+                                puts={optionsData.puts}
                             />
                         )}
-
-                        {/* Orders History Button */}
-                        <div className="flex justify-center">
-                            <OrdersHistory refreshTrigger={orderRefreshTrigger} />
-                        </div>
                     </div>
 
                     {/* Open Positions Panel (1 column) */}

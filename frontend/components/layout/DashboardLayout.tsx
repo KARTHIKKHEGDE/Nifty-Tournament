@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import Navbar from './Navbar';
-import Sidebar from './Sidebar';
+
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -15,11 +15,10 @@ export default function DashboardLayout({ children, title = 'Dashboard' }: Dashb
                 <title>{title} - OptionsLeague</title>
             </Head>
 
-            <div className="min-h-screen bg-gray-900">
+            <div className="min-h-screen bg-gray-100 dark:bg-[#1e2329]">
                 <Navbar />
-                <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 overflow-x-hidden">
+                <div className="flex justify-center">
+                    <main className="w-full max-w-7xl">
                         {children}
                     </main>
                 </div>

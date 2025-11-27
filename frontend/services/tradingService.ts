@@ -152,6 +152,52 @@ class TradingService {
     }
 
     /**
+     * Get options chain for NIFTY or BANKNIFTY
+     */
+    async getOptionsChain(
+        symbol: string,
+        expiryDate?: string
+    ): Promise<{
+        symbol: string;
+        spot_price: number;
+        expiry_date: string | null;
+        ce_options: Array<{
+            strike: number;
+            expiry: string;
+            instrument_token: number;
+            tradingsymbol: string;
+            ltp: number;
+            oi: number;
+            change: number;
+            volume: number;
+        }>;
+        pe_options: Array<{
+            strike: number;
+            expiry: string;
+            instrument_token: number;
+            tradingsymbol: string;
+            ltp: number;
+            oi: number;
+            change: number;
+            volume: number;
+        }>;
+    }> {
+        try {
+            const params: any = {};
+            if (expiryDate) {
+                params.expiry_date = expiryDate;
+            }
+
+            const response = await api.get(`/api/candles/options-chain/${symbol}`, {
+                params,
+            });
+            return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
      * Get current price for a symbol
      */
     async getCurrentPrice(symbol: string): Promise<number> {
