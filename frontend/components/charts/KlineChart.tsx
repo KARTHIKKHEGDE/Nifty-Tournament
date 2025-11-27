@@ -15,9 +15,10 @@ interface KlineChartProps {
     showVolume?: boolean;
     height?: number;
     onLoadMore?: () => void;
+    isNiftyChart?: boolean; // If true, shows Open Positions instead of Buy/Sell buttons
 }
 
-function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore }: KlineChartProps) {
+function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore, isNiftyChart = false }: KlineChartProps) {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
     const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -497,12 +498,24 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                         )}
                     </div>
 
-                    <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#26a69a] text-white text-xs font-bold hover:bg-[#1f8a7f] transition-colors">
-                        B
-                    </button>
-                    <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ef5350] text-white text-xs font-bold hover:bg-[#d84946] transition-colors">
-                        S
-                    </button>
+
+                    {isNiftyChart ? (
+                        // For NIFTY: Show Open Positions button
+                        <button className="px-4 py-1.5 flex items-center justify-center rounded bg-[#2962ff] text-white text-xs font-semibold hover:bg-[#1e53e5] transition-colors">
+                            Open Positions
+                        </button>
+                    ) : (
+                        // For Options: Show Buy and Sell buttons
+                        <>
+                            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#26a69a] text-white text-xs font-bold hover:bg-[#1f8a7f] transition-colors">
+                                B
+                            </button>
+                            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ef5350] text-white text-xs font-bold hover:bg-[#d84946] transition-colors">
+                                S
+                            </button>
+                        </>
+                    )}
+
                 </div>
             </div>
 

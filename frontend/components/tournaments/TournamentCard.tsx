@@ -140,7 +140,6 @@ export default function TournamentCard({
                                 variant="success"
                                 className="flex-1"
                                 isLoading={isLoading}
-                                disabled={tournament.status === 'COMPLETED' || tournament.status === 'CANCELLED'}
                             >
                                 Join Tournament
                             </Button>

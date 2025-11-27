@@ -3,7 +3,6 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import KlineChart from '../../components/charts/KlineChart';
 import SymbolTabs from '../../components/trading/SymbolTabs';
 import TimeframeSelector from '../../components/trading/TimeframeSelector';
-import OrderPanel from '../../components/trading/OrderPanel';
 import OrdersHistory from '../../components/trading/OrdersHistory';
 import PositionsTable from '../../components/trading/PositionsTable';
 import Loader from '../../components/common/Loader';
@@ -209,6 +208,7 @@ export default function NiftyTradingPage() {
                                 showVolume={false} // NIFTY index doesn't have volume
                                 height={600}
                                 onLoadMore={handleLoadMore}
+                                isNiftyChart={true} // NIFTY is view-only, no Buy/Sell
                             />
                         )}
 
@@ -218,18 +218,22 @@ export default function NiftyTradingPage() {
                         </div>
                     </div>
 
-                    {/* Order Panel (1 column) */}
-                    <div className="lg:col-span-1">
-                        <OrderPanel
-                            symbol={currentSymbol}
-                            currentPrice={currentPrice}
-                            instrumentType="INDEX"
-                        />
+                    {/* Open Positions Panel (1 column) */}
+                    <div className="lg:col-span-1 space-y-4">
+                        {/* Positions Table */}
+                        <PositionsTable />
+
+                        {/* Quick Info Card */}
+                        <div className="bg-gray-800 rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-white mb-3">Quick Info</h3>
+                            <div className="text-sm text-gray-400 space-y-2">
+                                <p>• NIFTY 50 is an index (view-only)</p>
+                                <p>• Trade options from Options Chain</p>
+                                <p>• Monitor positions here in real-time</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                {/* Positions Table */}
-                <PositionsTable />
 
                 {/* Trading Tips */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

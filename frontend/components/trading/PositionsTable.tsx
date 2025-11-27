@@ -5,50 +5,71 @@ import tradingService from '../../services/tradingService';
 import Button from '../common/Button';
 import Card from '../common/Card';
 import Loader from '../common/Loader';
+import { X, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function PositionsTable() {
     const [positions, setPositions] = useState<PaperPosition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showMode, setShowMode] = useState<'day' | 'net'>('day');
+    const [pnlMode, setPnlMode] = useState<'amount' | 'percent'>('amount');
 
-    const loadPositions = async () => {
-        setIsLoading(true);
+    const loadPositions = async (showLoading = false) => {
+        if (showLoading) {
+            setIsLoading(true);
+        }
         try {
             const data = await tradingService.getPositions();
             setPositions(data);
         } catch (error) {
             console.error('Failed to load positions:', error);
         } finally {
-            setIsLoading(false);
+            if (showLoading) {
+                setIsLoading(false);
+            }
         }
     };
 
     useEffect(() => {
-        loadPositions();
+        // Initial load with loading indicator
+        loadPositions(true);
 
-        // Refresh positions every 5 seconds
-        const interval = setInterval(loadPositions, 5000);
+        // Refresh positions every 3 seconds silently (no loading indicator)
+        const interval = setInterval(() => loadPositions(false), 3000);
         return () => clearInterval(interval);
     }, []);
 
     const handleClosePosition = async (positionId: number) => {
         try {
             await tradingService.closePosition(positionId);
-            loadPositions();
+            loadPositions(true);
         } catch (error) {
             console.error('Failed to close position:', error);
         }
     };
 
-    const calculatePnLPercentage = (position: PaperPosition) => {
-        if (!position.current_price) return 0;
-        const pnl = (position.current_price - position.average_price) * position.quantity;
-        const investment = position.average_price * Math.abs(position.quantity);
-        return (pnl / investment) * 100;
+    // Calculate P&L based on Zerodha logic
+    const calculatePnL = (position: PaperPosition): number => {
+        const ltp = position.ltp || position.current_price || position.average_price;
+
+        // For Options/Futures: P&L = (LTP - AvgPrice) × LotSize
+        if (position.instrument_type === 'CE' || position.instrument_type === 'PE' || position.instrument_type === 'FUT') {
+            return (ltp - position.average_price) * position.multiplier * Math.sign(position.quantity);
+        }
+
+        // For Equity: P&L = (LTP - AvgPrice) × Quantity
+        return (ltp - position.average_price) * position.quantity;
     };
+
+    const calculatePnLPercentage = (position: PaperPosition): number => {
+        const ltp = position.ltp || position.current_price || position.average_price;
+        return ((ltp - position.average_price) / position.average_price) * 100;
+    };
+
+    const totalPnL = positions.reduce((sum, p) => sum + calculatePnL(p), 0);
 
     if (isLoading) {
         return (
-            <Card title="Open Positions">
+            <Card title="Positions">
                 <div className="flex justify-center py-8">
                     <Loader text="Loading positions..." />
                 </div>
@@ -58,111 +79,171 @@ export default function PositionsTable() {
 
     if (positions.length === 0) {
         return (
-            <Card title="Open Positions">
+            <Card title="Positions">
                 <div className="text-center py-8">
-                    <p className="text-gray-400">No open positions</p>
+                    <p className="text-gray-400 text-sm">No open positions</p>
+                    <p className="text-gray-500 text-xs mt-2">Your active positions will appear here</p>
                 </div>
             </Card>
         );
     }
 
     return (
-        <Card title="Open Positions" subtitle={`${positions.length} position(s)`}>
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400">
-                                Symbol
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400">
-                                Type
-                            </th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">
-                                Quantity
-                            </th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">
-                                Avg Price
-                            </th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">
-                                Current Price
-                            </th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">
-                                Unrealized P&L
-                            </th>
-                            <th className="text-right py-3 px-4 text-sm font-semibold text-gray-400">
-                                P&L %
-                            </th>
-                            <th className="text-center py-3 px-4 text-sm font-semibold text-gray-400">
-                                Action
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {positions.map((position) => {
-                            const pnlPercent = calculatePnLPercentage(position);
-                            return (
-                                <tr
-                                    key={position.id}
-                                    className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
-                                >
-                                    <td className="py-3 px-4 text-sm text-white font-medium">
-                                        {position.symbol}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-gray-300">
-                                        {position.instrument_type}
-                                    </td>
-                                    <td className={`py-3 px-4 text-sm text-right font-semibold ${position.quantity > 0 ? 'text-green-500' : 'text-red-500'
-                                        }`}>
-                                        {position.quantity > 0 ? '+' : ''}{position.quantity}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-right text-gray-300">
-                                        {formatCurrency(position.average_price)}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-right text-white font-medium">
-                                        {position.current_price ? formatCurrency(position.current_price) : '-'}
-                                    </td>
-                                    <td className={`py-3 px-4 text-sm text-right font-semibold ${getPriceColor(position.unrealized_pnl || 0)
-                                        }`}>
-                                        {position.unrealized_pnl ? formatCurrency(position.unrealized_pnl) : '-'}
-                                    </td>
-                                    <td className={`py-3 px-4 text-sm text-right font-semibold ${getPriceColor(pnlPercent)
-                                        }`}>
-                                        {formatPercentage(pnlPercent)}
-                                    </td>
-                                    <td className="py-3 px-4 text-center">
-                                        <Button
-                                            onClick={() => handleClosePosition(position.id)}
-                                            variant="danger"
-                                            size="sm"
-                                        >
-                                            Close
-                                        </Button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+        <Card title="Positions" subtitle={`${positions.length} position(s)`}>
+            {/* Header Controls */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-700">
+                {/* Day / Net Toggle */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowMode('day')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showMode === 'day'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                    >
+                        Day
+                    </button>
+                    <button
+                        onClick={() => setShowMode('net')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showMode === 'net'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                    >
+                        Net
+                    </button>
+                </div>
+
+                {/* ₹ / % Toggle */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setPnlMode('amount')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'amount'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                    >
+                        ₹
+                    </button>
+                    <button
+                        onClick={() => setPnlMode('percent')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'percent'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                    >
+                        %
+                    </button>
+                </div>
             </div>
 
-            {/* Summary */}
-            <div className="mt-4 pt-4 border-t border-gray-700 grid grid-cols-2 gap-4">
-                <div>
-                    <p className="text-sm text-gray-400">Total Unrealized P&L</p>
-                    <p className={`text-lg font-bold ${getPriceColor(
-                        positions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
-                    )}`}>
-                        {formatCurrency(positions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0))}
-                    </p>
-                </div>
-                <div>
-                    <p className="text-sm text-gray-400">Total Realized P&L</p>
-                    <p className={`text-lg font-bold ${getPriceColor(
-                        positions.reduce((sum, p) => sum + p.realized_pnl, 0)
-                    )}`}>
-                        {formatCurrency(positions.reduce((sum, p) => sum + p.realized_pnl, 0))}
-                    </p>
+            {/* Positions List */}
+            <div className="space-y-3">
+                {positions.map((position) => {
+                    const pnl = calculatePnL(position);
+                    const pnlPercent = calculatePnLPercentage(position);
+                    const ltp = position.ltp || position.current_price || position.average_price;
+                    const isProfitable = pnl >= 0;
+
+                    return (
+                        <div
+                            key={position.id}
+                            className="bg-gray-700/30 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-all"
+                        >
+                            {/* Row 1: Symbol & Product */}
+                            <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-white font-semibold text-sm">
+                                            {position.tradingsymbol || position.symbol}
+                                        </h4>
+                                        <span className="text-xs text-gray-400">
+                                            ({position.exchange || 'NFO'})
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">
+                                            {position.product || 'MIS'}
+                                        </span>
+                                        <span className="text-xs text-gray-400">
+                                            Qty: <span className={position.quantity > 0 ? 'text-green-400' : 'text-red-400'}>
+                                                {position.quantity > 0 ? '+' : ''}{position.quantity}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Close Button */}
+                                <button
+                                    onClick={() => handleClosePosition(position.id)}
+                                    className="p-1.5 rounded hover:bg-gray-600 transition-colors"
+                                    title="Close Position"
+                                >
+                                    <X className="w-4 h-4 text-gray-400" />
+                                </button>
+                            </div>
+
+                            {/* Row 2: Avg & LTP */}
+                            <div className="flex items-center gap-4 mb-2 text-xs">
+                                <div>
+                                    <span className="text-gray-400">Avg: </span>
+                                    <span className="text-white font-medium">
+                                        {formatCurrency(position.average_price)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">LTP: </span>
+                                    <span className="text-white font-medium">
+                                        {formatCurrency(ltp)}
+                                    </span>
+                                </div>
+                                {position.day_change_percentage !== undefined && (
+                                    <div className={`flex items-center gap-1 ${getPriceColor(position.day_change_percentage)}`}>
+                                        {position.day_change_percentage > 0 ? (
+                                            <TrendingUp className="w-3 h-3" />
+                                        ) : (
+                                            <TrendingDown className="w-3 h-3" />
+                                        )}
+                                        <span className="font-medium">
+                                            {position.day_change_percentage > 0 ? '+' : ''}
+                                            {position.day_change_percentage.toFixed(2)}%
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Row 3: P&L */}
+                            <div className="flex items-center justify-between">
+                                <div className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+                                    P&L: {pnlMode === 'amount' ? (
+                                        <span>{isProfitable ? '+' : ''}{formatCurrency(pnl)}</span>
+                                    ) : (
+                                        <span>{isProfitable ? '+' : ''}{pnlPercent.toFixed(2)}%</span>
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleClosePosition(position.id)}
+                                        className="px-3 py-1 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                                    >
+                                        EXIT
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Footer: Total P&L */}
+            <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-gray-300">Total P&L</span>
+                    <span className={`text-lg font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
+                    </span>
                 </div>
             </div>
         </Card>

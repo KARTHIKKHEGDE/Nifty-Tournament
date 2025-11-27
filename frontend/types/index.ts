@@ -65,13 +65,24 @@ export interface PaperOrder {
 export interface PaperPosition {
     id: number;
     user_id: number;
-    symbol: string;
-    instrument_type: 'INDEX' | 'CE' | 'PE';
-    quantity: number;
-    average_price: number;
-    current_price?: number;
-    unrealized_pnl?: number;
-    realized_pnl: number;
+    tradingsymbol: string; // Full trading symbol (e.g., NIFTY24NOV24000CE)
+    symbol: string; // Display name
+    exchange: 'NSE' | 'NFO' | 'BSE'; // Exchange
+    product: 'MIS' | 'CNC' | 'NRML'; // Product type
+    instrument_type: 'INDEX' | 'CE' | 'PE' | 'FUT'; // Instrument type
+    quantity: number; // Net quantity (buy_qty - sell_qty)
+    buy_qty: number; // Total buy quantity
+    sell_qty: number; // Total sell quantity
+    average_price: number; // Weighted average entry price
+    ltp?: number; // Last traded price (current market price)
+    current_price?: number; // Alias for ltp
+    pnl?: number; // Total P&L (unrealized + realized)
+    unrealized_pnl?: number; // Unrealized P&L (based on LTP)
+    realized_pnl: number; // Realized P&L (after square-off)
+    day_change?: number; // LTP change vs yesterday close
+    day_change_percentage?: number; // % change
+    multiplier: number; // Lot size (for F&O)
+    var_margin?: number; // Margin required (for F&O)
     created_at: string;
     updated_at: string;
 }
