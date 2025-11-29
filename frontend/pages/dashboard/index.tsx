@@ -39,6 +39,22 @@ export default function DashboardHome() {
         console.log('🚀 [Dashboard] Initial state - currentTimeframe:', currentTimeframe);
     }, []);
 
+    // Map frontend timeframe to backend format
+    const mapTimeframeToBackend = (timeframe: string): string => {
+        const mapping: Record<string, string> = {
+            '1m': 'minute',
+            '3m': '3minute',
+            '5m': '5minute',
+            '15m': '15minute',
+            '30m': '30minute',
+            '1h': '60minute',
+            '1d': 'day'
+        };
+        const mapped = mapping[timeframe] || timeframe;
+        console.log(`🔄 [mapTimeframe] ${timeframe} → ${mapped}`);
+        return mapped;
+    };
+
     const fetchOptionsChain = async (symbol: string) => {
         setIsLoadingOptions(true);
         try {
@@ -114,10 +130,11 @@ export default function DashboardHome() {
         setIsLoadingChart(true);
 
         try {
+            const backendTimeframe = mapTimeframeToBackend(timeframe);
             const params = {
                 symbol: symbol.symbol,
                 instrument_token: symbol.instrumentToken,
-                timeframe: timeframe,
+                timeframe: backendTimeframe,
                 limit: 200
             };
 

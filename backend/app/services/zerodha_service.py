@@ -188,13 +188,24 @@ class ZerodhaService:
         Returns:
             List of candle dictionaries
         """
+        logger.info(f"🔵 [get_historical_data] Token: {instrument_token}, Interval: {interval}")
+        logger.info(f"🔵 [get_historical_data] Date range: {from_date} to {to_date}")
+        logger.info(f"🔵 [get_historical_data] Kite instance: {self.kite is not None}")
+        
         try:
+            if not self.kite:
+                logger.error("❌ [get_historical_data] Kite instance is None - not authenticated!")
+                return []
+            
+            logger.info(f"🔵 [get_historical_data] Calling kite.historical_data()...")
             historical_data = self.kite.historical_data(
                 instrument_token=instrument_token,
                 from_date=from_date,
                 to_date=to_date,
                 interval=interval
             )
+            
+            logger.info(f"✅ [get_historical_data] Received {len(historical_data)} raw candles from Kite")
             
             # Convert to list of dicts
             candles = []
@@ -208,10 +219,14 @@ class ZerodhaService:
                     'volume': candle['volume']
                 })
             
-            logger.info(f"Fetched {len(candles)} candles for token {instrument_token}")
+            logger.info(f"✅ [get_historical_data] Fetched {len(candles)} candles for token {instrument_token}")
             return candles
         except Exception as e:
-            logger.error(f"Failed to fetch historical data: {e}")
+            logger.error(f"❌ [get_historical_data] Failed to fetch historical data: {str(e)}")
+            logger.error(f"❌ [get_historical_data] Error type: {type(e).__name__}")
+            logger.error(f"❌ [get_historical_data] Full error: {repr(e)}")
+            import traceback
+            logger.error(f"❌ [get_historical_data] Traceback: {traceback.format_exc()}")
             return []
     
     def get_current_price(self, symbol: str) -> Optional[float]:

@@ -33,10 +33,17 @@ async def get_candles(
     Returns:
         List of candles with OHLCV data
     """
+    from app.utils.logger import setup_logger
+    logger = setup_logger(__name__)
+    
+    logger.info(f"🔵 [get_candles] START - Symbol: {symbol}, Timeframe: {timeframe}, Limit: {limit}")
+    logger.info(f"🔵 [get_candles] Instrument token: {instrument_token}")
+    
     zerodha = get_zerodha_service()
     
     # If instrument_token is not provided, return error
     if not instrument_token:
+        logger.error("❌ [get_candles] No instrument token provided")
         raise HTTPException(
             status_code=400,
             detail="instrument_token is required to fetch real candle data"
@@ -45,43 +52,111 @@ async def get_candles(
     # Map timeframe to Zerodha interval
     timeframe_map = {
         "1m": "minute",
+        "minute": "minute",
+        "3m": "3minute",
+        "3minute": "3minute",
         "5m": "5minute",
+        "5minute": "5minute",
         "15m": "15minute",
+        "15minute": "15minute",
         "30m": "30minute",
+        "30minute": "30minute",
         "1h": "60minute",
+        "60minute": "60minute",
         "4h": "60minute",
-        "1D": "day"
+        "1D": "day",
+        "1d": "day",
+        "day": "day"
     }
     
     interval = timeframe_map.get(timeframe, timeframe)
+    logger.info(f"🔄 [get_candles] Timeframe mapping: {timeframe} → {interval}")
     
     # Calculate date range based on timeframe and limit
+    # Indian market hours: 9:15 AM to 3:30 PM, Monday to Friday
     to_date = datetime.now()
     
+    # Helper function to adjust to market hours
+    def get_market_end_time(dt: datetime) -> datetime:
+        """Get the last market close time before or at the given datetime"""
+        # If it's a weekend, go back to Friday
+        while dt.weekday() >= 5:  # 5=Saturday, 6=Sunday
+            dt = dt - timedelta(days=1)
+        
+        # Set to market close time (3:30 PM)
+        market_close = dt.replace(hour=15, minute=30, second=0, microsecond=0)
+        
+        # If current time is before market close today, use previous day's close
+        if dt < market_close:
+            dt = dt - timedelta(days=1)
+            # Check if previous day is weekend
+            while dt.weekday() >= 5:
+                dt = dt - timedelta(days=1)
+            market_close = dt.replace(hour=15, minute=30, second=0, microsecond=0)
+        
+        return market_close
+    
+    def get_market_start_time(dt: datetime) -> datetime:
+        """Get market open time for the given date"""
+        # Ensure it's a weekday
+        while dt.weekday() >= 5:
+            dt = dt - timedelta(days=1)
+        return dt.replace(hour=9, minute=15, second=0, microsecond=0)
+    
+    # Adjust to_date to last market close
+    to_date = get_market_end_time(to_date)
+    
     # Calculate from_date based on interval and limit
+    # We need to account for market hours (6h 15min per day) and weekends
     if interval == "minute":
-        from_date = to_date - timedelta(minutes=limit)
+        # ~375 minutes per trading day (6h 15min)
+        trading_days_needed = (limit / 375) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))  # Add buffer for weekends
+    elif interval == "3minute":
+        trading_days_needed = (limit * 3 / 375) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))
     elif interval == "5minute":
-        from_date = to_date - timedelta(minutes=limit * 5)
+        trading_days_needed = (limit * 5 / 375) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))
     elif interval == "15minute":
-        from_date = to_date - timedelta(minutes=limit * 15)
+        trading_days_needed = (limit * 15 / 375) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))
     elif interval == "30minute":
-        from_date = to_date - timedelta(minutes=limit * 30)
+        trading_days_needed = (limit * 30 / 375) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))
     elif interval == "60minute":
-        from_date = to_date - timedelta(hours=limit)
+        # ~6 candles per day
+        trading_days_needed = (limit / 6) + 1
+        from_date = to_date - timedelta(days=int(trading_days_needed * 1.5))
     elif interval == "day":
-        from_date = to_date - timedelta(days=limit)
+        # Account for weekends (5 trading days per week)
+        calendar_days_needed = int(limit * 1.5)
+        from_date = to_date - timedelta(days=calendar_days_needed)
     else:
-        from_date = to_date - timedelta(days=7)
+        from_date = to_date - timedelta(days=30)
+    
+    # Adjust from_date to market start
+    from_date = get_market_start_time(from_date)
+    
+    logger.info(f"🔵 [get_candles] Date range: {from_date} to {to_date}")
+    logger.info(f"🔵 [get_candles] Market hours adjusted: {from_date.strftime('%Y-%m-%d %H:%M')} to {to_date.strftime('%Y-%m-%d %H:%M')}")
     
     try:
         # Fetch historical data from Zerodha
+        logger.info(f"🔵 [get_candles] Fetching from Zerodha...")
         candles_data = zerodha.get_historical_data(
             instrument_token=instrument_token,
             from_date=from_date,
             to_date=to_date,
             interval=interval
         )
+        
+        logger.info(f"✅ [get_candles] Received {len(candles_data)} candles from Zerodha")
+        
+        # If no data from Zerodha, use mock data
+        if len(candles_data) == 0:
+            logger.warning(f"⚠️ [get_candles] Zerodha returned 0 candles - falling back to mock data")
+            raise Exception("No candles from Zerodha - using mock data")
         
         # Transform to frontend format
         candles = []
@@ -95,22 +170,42 @@ async def get_candles(
                 "volume": candle['volume']
             })
         
+        logger.info(f"✅ [get_candles] Returning {len(candles)} candles to frontend")
         return candles
         
     except Exception as e:
         # Log the error and return mock data as fallback
         import random
-        from app.utils.logger import setup_logger
-        logger = setup_logger(__name__)
-        logger.error(f"Failed to fetch real candle data: {e}. Returning mock data.")
+        logger.error(f"❌ [get_candles] Error fetching from Zerodha: {str(e)}")
+        logger.error(f"❌ [get_candles] Error type: {type(e).__name__}")
+        logger.warning(f"⚠️ [get_candles] Returning mock data as fallback")
         
         # Fallback to mock data
-        base_price = 19500 if "NIFTY" in symbol else 100
+        base_price = 24500 if "NIFTY" in symbol.upper() else 100
         candles = []
         current_time = datetime.now()
         
+        logger.info(f"⚠️ [get_candles] Generating {limit} mock candles")
+        
         for i in range(limit):
-            timestamp = int((current_time - timedelta(minutes=5 * (limit - i))).timestamp() * 1000)
+            # Calculate timestamp based on interval
+            if interval == "minute":
+                timestamp = int((current_time - timedelta(minutes=(limit - i))).timestamp() * 1000)
+            elif interval == "3minute":
+                timestamp = int((current_time - timedelta(minutes=3 * (limit - i))).timestamp() * 1000)
+            elif interval == "5minute":
+                timestamp = int((current_time - timedelta(minutes=5 * (limit - i))).timestamp() * 1000)
+            elif interval == "15minute":
+                timestamp = int((current_time - timedelta(minutes=15 * (limit - i))).timestamp() * 1000)
+            elif interval == "30minute":
+                timestamp = int((current_time - timedelta(minutes=30 * (limit - i))).timestamp() * 1000)
+            elif interval == "60minute":
+                timestamp = int((current_time - timedelta(hours=(limit - i))).timestamp() * 1000)
+            elif interval == "day":
+                timestamp = int((current_time - timedelta(days=(limit - i))).timestamp() * 1000)
+            else:
+                timestamp = int((current_time - timedelta(minutes=5 * (limit - i))).timestamp() * 1000)
+            
             open_price = base_price + random.uniform(-100, 100)
             close_price = open_price + random.uniform(-50, 50)
             high_price = max(open_price, close_price) + random.uniform(0, 30)
@@ -127,6 +222,7 @@ async def get_candles(
             
             base_price = close_price
         
+        logger.info(f"✅ [get_candles] Returning {len(candles)} mock candles to frontend")
         return candles
 
 
