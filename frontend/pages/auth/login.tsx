@@ -37,7 +37,7 @@ export default function Login() {
         try {
             const response = await authService.login(formData);
             setUser(response.user);
-            router.push('/dashboard/nifty');
+            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Login failed. Please try again.');
         } finally {

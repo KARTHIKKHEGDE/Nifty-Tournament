@@ -74,7 +74,7 @@ export default function Signup() {
         try {
             const response = await authService.signup(formData);
             setUser(response.user);
-            router.push('/dashboard/nifty');
+            router.push('/dashboard');
         } catch (err: any) {
             setErrors({ general: err.message || 'Signup failed. Please try again.' });
         } finally {

@@ -16,9 +16,10 @@ interface KlineChartProps {
     height?: number | string;
     onLoadMore?: () => void;
     isNiftyChart?: boolean; // If true, shows Open Positions instead of Buy/Sell buttons
+    onTimeframeChange?: (timeframe: string) => void; // Callback when timeframe changes
 }
 
-function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore, isNiftyChart = false }: KlineChartProps) {
+function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore, isNiftyChart = false, onTimeframeChange }: KlineChartProps) {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
     const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -437,6 +438,9 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                                         onClick={() => {
                                             setSelectedTimeframe(tf);
                                             setShowTimeframeMenu(false);
+                                            if (onTimeframeChange) {
+                                                onTimeframeChange(tf);
+                                            }
                                         }}
                                         className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf ? 'text-[#2962ff] bg-[#2a2e39]' : 'text-white'
                                             }`}

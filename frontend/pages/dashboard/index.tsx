@@ -29,6 +29,15 @@ export default function DashboardHome() {
         spotPrice: 0
     });
     const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+    const [currentTimeframe, setCurrentTimeframe] = useState('5m');
+
+    // Debug: Component mount
+    useEffect(() => {
+        console.log('🚀 [Dashboard] Component mounted');
+        console.log('🚀 [Dashboard] Initial state - showChart:', showChart);
+        console.log('🚀 [Dashboard] Initial state - selectedSymbol:', selectedSymbol);
+        console.log('🚀 [Dashboard] Initial state - currentTimeframe:', currentTimeframe);
+    }, []);
 
     const fetchOptionsChain = async (symbol: string) => {
         setIsLoadingOptions(true);
@@ -92,43 +101,89 @@ export default function DashboardHome() {
         }
     };
 
+    const fetchCandles = async (symbol: WatchlistSymbol, timeframe: string) => {
+        console.log('🔵 [fetchCandles] START - Symbol:', symbol.symbol, 'Timeframe:', timeframe);
+        console.log('🔵 [fetchCandles] Symbol object:', JSON.stringify(symbol, null, 2));
+
+        if (!symbol.instrumentToken) {
+            console.error('❌ [fetchCandles] No instrument token found for symbol:', symbol.symbol);
+            return;
+        }
+
+        console.log('🔵 [fetchCandles] Instrument token:', symbol.instrumentToken);
+        setIsLoadingChart(true);
+
+        try {
+            const params = {
+                symbol: symbol.symbol,
+                instrument_token: symbol.instrumentToken,
+                timeframe: timeframe,
+                limit: 200
+            };
+
+            console.log('🔵 [fetchCandles] API Request params:', params);
+            console.log('🔵 [fetchCandles] Making API call to /api/candles/');
+
+            const response = await api.get('/api/candles/', { params });
+
+            console.log('✅ [fetchCandles] API Response received');
+            console.log('✅ [fetchCandles] Response status:', response.status);
+            console.log('✅ [fetchCandles] Response data length:', response.data?.length);
+            console.log('✅ [fetchCandles] First 3 candles:', response.data?.slice(0, 3));
+
+            setCandles(response.data);
+            console.log('✅ [fetchCandles] Candles state updated successfully');
+        } catch (error: any) {
+            console.error('❌ [fetchCandles] Error occurred:', error);
+            console.error('❌ [fetchCandles] Error message:', error.message);
+            console.error('❌ [fetchCandles] Error response:', error.response?.data);
+            console.error('❌ [fetchCandles] Error status:', error.response?.status);
+
+            // Use mock data as fallback
+            const mockCandles = [
+                {
+                    timestamp: Date.now() - 3600000,
+                    open: symbol.ltp * 0.98,
+                    high: symbol.ltp * 1.02,
+                    low: symbol.ltp * 0.96,
+                    close: symbol.ltp,
+                    volume: 1000000,
+                },
+            ];
+
+            console.log('⚠️ [fetchCandles] Using mock data as fallback:', mockCandles);
+            setCandles(mockCandles);
+        } finally {
+            setIsLoadingChart(false);
+            console.log('🔵 [fetchCandles] END - Loading state set to false');
+        }
+    };
+
+    const handleTimeframeChange = (timeframe: string) => {
+        console.log('🟢 [handleTimeframeChange] Timeframe changed to:', timeframe);
+        console.log('🟢 [handleTimeframeChange] Current selected symbol:', selectedSymbol?.symbol);
+
+        setCurrentTimeframe(timeframe);
+        if (selectedSymbol) {
+            console.log('🟢 [handleTimeframeChange] Calling fetchCandles...');
+            fetchCandles(selectedSymbol, timeframe);
+        } else {
+            console.warn('⚠️ [handleTimeframeChange] No symbol selected, skipping fetch');
+        }
+    };
+
     const handleSymbolSelect = async (symbol: WatchlistSymbol) => {
+        console.log('🟣 [handleSymbolSelect] Symbol selected:', symbol.symbol);
+        console.log('🟣 [handleSymbolSelect] Symbol details:', JSON.stringify(symbol, null, 2));
+        console.log('🟣 [handleSymbolSelect] Current timeframe:', currentTimeframe);
+
         setSelectedSymbol(symbol);
         setShowChart(true);
-        setIsLoadingChart(true);
         setActiveTab('CHART'); // Reset to chart tab
 
-        // Fetch candle data for the selected symbol
-        if (symbol.instrumentToken) {
-            try {
-                const response = await api.get('/api/candles/', {
-                    params: {
-                        symbol: symbol.symbol,
-                        instrument_token: symbol.instrumentToken,
-                        timeframe: '5minute',
-                        limit: 400
-                    }
-                });
-                setCandles(response.data);
-            } catch (error) {
-                console.error('Error fetching candle data:', error);
-                // Use mock data as fallback
-                setCandles([
-                    {
-                        timestamp: Date.now() - 3600000,
-                        open: symbol.ltp * 0.98,
-                        high: symbol.ltp * 1.02,
-                        low: symbol.ltp * 0.96,
-                        close: symbol.ltp,
-                        volume: 1000000,
-                    },
-                ]);
-            } finally {
-                setIsLoadingChart(false);
-            }
-        } else {
-            setIsLoadingChart(false);
-        }
+        console.log('🟣 [handleSymbolSelect] Calling fetchCandles...');
+        // Fetch candle data for the selected symbol with current timeframe
+        await fetchCandles(symbol, currentTimeframe);
     };
 
     // Effect to fetch options chain when tab changes to OPTION_CHAIN
@@ -137,6 +192,12 @@ export default function DashboardHome() {
             fetchOptionsChain(selectedSymbol.displayName);
         }
     }, [activeTab, selectedSymbol]);
+
+    // Debug effect to monitor candles state
+    useEffect(() => {
+        console.log('📊 [Candles State Changed] Length:', candles.length);
+        console.log('📊 [Candles State Changed] Data:', candles.slice(0, 3));
+    }, [candles]);
 
     // Mock recent orders (you can replace with real API call)
     const recentOrders = orders.slice(0, 10);
@@ -212,6 +273,7 @@ export default function DashboardHome() {
                                     symbol={selectedSymbol.symbol}
                                     showVolume={true}
                                     height="100%"
+                                    onTimeframeChange={handleTimeframeChange}
                                 />
                             )
                         ) : (
