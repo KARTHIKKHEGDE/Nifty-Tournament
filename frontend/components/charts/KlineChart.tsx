@@ -280,44 +280,43 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
     const toggleIndicator = (indicatorName: string) => {
         if (!chartInstance.current) return;
 
+        let paneId = 'candle_pane';
+        let isOverlay = true;
+        let calcParams: number[] = [];
+
+        switch (indicatorName) {
+            case 'MA':
+                calcParams = [9];
+                isOverlay = true;
+                break;
+            case 'EMA':
+                calcParams = [9, 21];
+                isOverlay = true;
+                break;
+            case 'BOLL':
+                calcParams = [20, 2];
+                isOverlay = true;
+                break;
+            case 'RSI':
+                calcParams = [14];
+                isOverlay = false;
+                paneId = 'rsi_pane';
+                break;
+            case 'MACD':
+                calcParams = [12, 26, 9];
+                isOverlay = false;
+                paneId = 'macd_pane';
+                break;
+        }
+
         if (activeIndicators.includes(indicatorName)) {
-            chartInstance.current.removeIndicator(indicatorName);
+            chartInstance.current.removeIndicator(paneId, indicatorName);
             setActiveIndicators(activeIndicators.filter(ind => ind !== indicatorName));
         } else {
-            let paneId = 'candle_pane';
-            let isOverlay = true;
-            let calcParams: number[] = [];
-
-            switch (indicatorName) {
-                case 'MA':
-                    calcParams = [9];
-                    isOverlay = true;
-                    break;
-                case 'EMA':
-                    calcParams = [9, 21];
-                    isOverlay = true;
-                    break;
-                case 'BOLL':
-                    calcParams = [20, 2];
-                    isOverlay = true;
-                    break;
-                case 'RSI':
-                    calcParams = [14];
-                    isOverlay = false;
-                    paneId = 'rsi_pane';
-                    break;
-                case 'MACD':
-                    calcParams = [12, 26, 9];
-                    isOverlay = false;
-                    paneId = 'macd_pane';
-                    break;
-            }
-
             chartInstance.current.createIndicator(indicatorName, isOverlay, {
                 id: paneId,
                 calcParams: calcParams,
             });
-
             setActiveIndicators([...activeIndicators, indicatorName]);
         }
         setShowIndicatorMenu(false);
