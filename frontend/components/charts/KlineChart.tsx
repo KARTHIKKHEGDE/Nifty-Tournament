@@ -6,7 +6,7 @@ import { CandleData } from '../../types';
 import {
     Plus, Minus, TrendingUp, TrendingDown, Move, MousePointer2,
     Pencil, Ruler, Circle, Square, Triangle, Type, Trash2,
-    Undo, Redo, Settings, ChevronLeft, ChevronRight, Activity
+    Undo, Redo, Settings, ChevronLeft, ChevronRight, ChevronDown, Activity
 } from 'lucide-react';
 
 interface KlineChartProps {
@@ -29,6 +29,7 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
     const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
     const [activeTool, setActiveTool] = useState<string>('cursor');
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
+    const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
 
     useEffect(() => {
         const handleResize = () => {
@@ -418,13 +419,34 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                     {/* Symbol Name */}
                     <h3 className="text-white font-semibold text-sm">{symbol}</h3>
 
-                    {/* Timeframe */}
-                    <button
-                        onClick={() => setSelectedTimeframe('5m')}
-                        className="px-3 py-1 text-xs font-medium rounded bg-[#2a2e39] text-white hover:bg-[#363a45] transition-colors"
-                    >
-                        {selectedTimeframe}
-                    </button>
+                    {/* Timeframe Selector */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
+                            className="px-3 py-1 text-xs font-medium rounded bg-[#2a2e39] text-white hover:bg-[#363a45] transition-colors flex items-center gap-1"
+                        >
+                            {selectedTimeframe}
+                            <ChevronDown className="w-3 h-3" />
+                        </button>
+
+                        {showTimeframeMenu && (
+                            <div className="absolute top-full left-0 mt-1 w-32 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
+                                {['1m', '3m', '5m', '15m', '30m', '1h', '1d'].map((tf) => (
+                                    <button
+                                        key={tf}
+                                        onClick={() => {
+                                            setSelectedTimeframe(tf);
+                                            setShowTimeframeMenu(false);
+                                        }}
+                                        className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf ? 'text-[#2962ff] bg-[#2a2e39]' : 'text-white'
+                                            }`}
+                                    >
+                                        {tf}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Sliders Icon */}
                     <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
