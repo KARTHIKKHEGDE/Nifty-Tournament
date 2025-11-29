@@ -151,10 +151,10 @@ async def get_options_chain(
     try:
         options_chain = zerodha.get_options_chain(symbol, expiry_date)
         
-        # Get spot price
+        # Get spot price using correct symbol for Zerodha
         spot_symbol = f"NSE:{symbol} 50" if symbol == "NIFTY" else f"NSE:{symbol}"
-        spot_price = zerodha.get_current_price(spot_symbol)
-        
+        spot_price = zerodha.get_current_price(spot_symbol) or 0
+
         return {
             "symbol": symbol,
             "spot_price": spot_price,

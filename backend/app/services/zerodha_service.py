@@ -255,14 +255,34 @@ class ZerodhaService:
             ]
             
             if expiry_date:
+                def expiry_matches(inst_expiry, expiry_date):
+                    if isinstance(inst_expiry, str):
+                        # If expiry is already a string, compare directly (strip time if present)
+                        return inst_expiry.split('T')[0] == expiry_date
+                    elif hasattr(inst_expiry, 'strftime'):
+                        return inst_expiry.strftime('%Y-%m-%d') == expiry_date
+                    return False
+
                 options = [
                     inst for inst in options
-                    if inst['expiry'].strftime('%Y-%m-%d') == expiry_date
+                    if expiry_matches(inst['expiry'], expiry_date)
                 ]
             
-            # Get quotes for all options
+            # Get quotes for all options in batches of 500 (Zerodha limit)
             instrument_keys = [f"NFO:{inst['tradingsymbol']}" for inst in options]
-            quotes = self.get_quote(instrument_keys)
+            quotes = {}
+            
+            # Batch size for quote calls
+            BATCH_SIZE = 500
+            
+            for i in range(0, len(instrument_keys), BATCH_SIZE):
+                batch_keys = instrument_keys[i:i + BATCH_SIZE]
+                try:
+                    batch_quotes = self.get_quote(batch_keys)
+                    quotes.update(batch_quotes)
+                    logger.info(f"Fetched quotes for batch {i//BATCH_SIZE + 1} ({len(batch_keys)} instruments)")
+                except Exception as e:
+                    logger.error(f"Failed to fetch quotes for batch {i}: {e}")
             
             # Organize by CE/PE
             ce_options = []
@@ -272,16 +292,34 @@ class ZerodhaService:
                 key = f"NFO:{inst['tradingsymbol']}"
                 quote = quotes.get(key, {})
                 
+                # Extract bid/ask if available (simplified)
+                bid = 0
+                ask = 0
+                if 'depth' in quote and 'buy' in quote['depth'] and quote['depth']['buy']:
+                    bid = quote['depth']['buy'][0]['price']
+                if 'depth' in quote and 'sell' in quote['depth'] and quote['depth']['sell']:
+                    ask = quote['depth']['sell'][0]['price']
+
                 option_data = {
-                    'strike': inst['strike'],
-                    'expiry': inst['expiry'].strftime('%Y-%m-%d'),
+                    'tradingsymbol': inst['tradingsymbol'],  # Frontend expects 'tradingsymbol'
+                    'strike': inst['strike'],   # Frontend expects 'strike'
+                    'expiry': inst['expiry'].strftime('%Y-%m-%d'), # Frontend expects 'expiry'
+                    'option_type': inst['instrument_type'],
                     'instrument_token': inst['instrument_token'],
-                    'tradingsymbol': inst['tradingsymbol'],
                     'ltp': quote.get('last_price', 0),
-                    'oi': quote.get('oi', 0),
-                    'change': quote.get('change', 0),
-                    'volume': quote.get('volume', 0)
+                    'oi': quote.get('oi', 0), # Frontend expects 'oi'
+                    'change': 0,  # Will be calculated below
+                    'volume': quote.get('volume', 0),
+                    'bid': bid,
+                    'ask': ask
                 }
+                
+                # Calculate change percent
+                # change % = (last_price - close) / close * 100
+                if 'ohlc' in quote and quote['ohlc']['close'] > 0:
+                     option_data['change'] = ((quote.get('last_price', 0) - quote['ohlc']['close']) / quote['ohlc']['close']) * 100
+                else:
+                     option_data['change'] = 0
                 
                 if inst['instrument_type'] == 'CE':
                     ce_options.append(option_data)

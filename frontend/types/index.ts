@@ -38,6 +38,7 @@ export enum OrderStatus {
     PENDING = 'PENDING',
     OPEN = 'OPEN',
     FILLED = 'FILLED',
+    COMPLETE = 'COMPLETE',
     PARTIALLY_FILLED = 'PARTIALLY_FILLED',
     CANCELLED = 'CANCELLED',
     REJECTED = 'REJECTED'
@@ -57,6 +58,8 @@ export interface PaperOrder {
     filled_quantity: number;
     average_price?: number;
     status: OrderStatus;
+    timestamp?: number;
+    pnl?: number;
     created_at: string;
     updated_at: string;
 }

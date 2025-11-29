@@ -16,7 +16,9 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
     // Get unique strike prices
     const strikes = Array.from(
         new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
-    ).sort((a, b) => a - b);
+    )
+        .filter((strike) => strike != null && !isNaN(strike))
+        .sort((a, b) => a - b);
 
     const getCallForStrike = (strike: number) => calls.find((c) => c.strike_price === strike);
     const getPutForStrike = (strike: number) => puts.find((p) => p.strike_price === strike);
@@ -161,7 +163,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                                         className={`text-center py-3 px-4 text-sm font-bold border-x border-gray-700 ${isATMStrike ? 'text-blue-400 bg-blue-500/10' : 'text-white bg-gray-800'
                                             }`}
                                     >
-                                        {strike.toLocaleString('en-IN')}
+                                        {strike ? strike.toLocaleString('en-IN') : '-'}
                                         {isATMStrike && (
                                             <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">
                                                 ATM

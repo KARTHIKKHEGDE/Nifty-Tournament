@@ -1,24 +1,47 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Head from 'next/head';
-import Navbar from './Navbar';
-
+import ZerodhaNavbar from './Navbar';
+import WatchlistSidebar from './WatchlistSidebar';
+import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
     title?: string;
+    showWatchlist?: boolean;
+    onSymbolSelect?: (symbol: WatchlistSymbol) => void;
 }
 
-export default function DashboardLayout({ children, title = 'Dashboard' }: DashboardLayoutProps) {
+export default function DashboardLayout({
+    children,
+    title = 'Dashboard',
+    showWatchlist = true,
+    onSymbolSelect,
+}: DashboardLayoutProps) {
+    const { initializeWatchlist } = useSymbolStore();
+
+    useEffect(() => {
+        initializeWatchlist();
+    }, [initializeWatchlist]);
+
+    const handleSymbolSelect = (symbol: WatchlistSymbol) => {
+        if (onSymbolSelect) {
+            onSymbolSelect(symbol);
+        }
+    };
+
     return (
         <>
             <Head>
-                <title>{title} - OptionsLeague</title>
+                <title>{title} - NIFTY Trader</title>
             </Head>
 
-            <div className="min-h-screen bg-gray-100 dark:bg-[#1e2329]">
-                <Navbar />
-                <div className="flex justify-center">
-                    <main className="w-full max-w-7xl">
+            <div className="min-h-screen bg-[#131722] flex flex-col">
+                <ZerodhaNavbar />
+                <div className="flex flex-1 overflow-hidden">
+                    {showWatchlist && (
+                        <WatchlistSidebar onSymbolSelect={handleSymbolSelect} />
+                    )}
+                    <main className="flex-1 overflow-y-auto">
                         {children}
                     </main>
                 </div>
@@ -26,3 +49,4 @@ export default function DashboardLayout({ children, title = 'Dashboard' }: Dashb
         </>
     );
 }
+

@@ -13,7 +13,7 @@ interface KlineChartProps {
     data: CandleData[];
     symbol: string;
     showVolume?: boolean;
-    height?: number;
+    height?: number | string;
     onLoadMore?: () => void;
     isNiftyChart?: boolean; // If true, shows Open Positions instead of Buy/Sell buttons
 }
@@ -29,6 +29,16 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
     const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
     const [activeTool, setActiveTool] = useState<string>('cursor');
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (chartInstance.current) {
+                chartInstance.current.resize();
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!chartRef.current) return;
@@ -315,7 +325,7 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
     const timeframes = ['5y', '1y', '3m', '1m', '5d', '1d'];
 
     return (
-        <div className="relative bg-[#0a0a0a] overflow-hidden" style={{ height: `${height}px` }}>
+        <div className="relative bg-[#0a0a0a] overflow-hidden" style={{ height: typeof height === 'number' ? `${height}px` : height }}>
             {/* Left Toolbar */}
             <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#131722] border-r border-[#2a2e39] z-20 flex flex-col items-center py-4 gap-1">
                 <button
@@ -403,94 +413,63 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
 
             {/* Top Header */}
             <div className="absolute top-0 left-12 right-0 h-12 bg-[#131722] border-b border-[#2a2e39] z-10 flex items-center justify-between px-4">
-                {/* Left: Symbol and Price Info */}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-white font-semibold text-sm">{symbol}</h3>
-                        <span className="text-[#787b86] text-xs">NSE</span>
-                    </div>
+                {/* Left Section */}
+                <div className="flex items-center gap-3">
+                    {/* Symbol Name */}
+                    <h3 className="text-white font-semibold text-sm">{symbol}</h3>
 
-                    {currentPrice > 0 && (
-                        <>
-                            <div className="flex items-center gap-2">
-                                <span className={`text-sm font-semibold ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
-                                    {currentPrice.toFixed(2)}
-                                </span>
-                                <span className={`text-xs ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
-                                    {isPriceUp ? '+' : ''}{priceChange.toFixed(2)}
-                                </span>
-                                <span className={`text-xs ${isPriceUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
-                                    ({isPriceUp ? '+' : ''}{priceChangePercent.toFixed(2)}%)
-                                </span>
-                            </div>
-                            <div className="text-[#787b86] text-xs">
-                                Volume SMA 9 <span className="text-[#ef5350]">91.036K</span>
-                            </div>
-                        </>
-                    )}
-                </div>
+                    {/* Timeframe */}
+                    <button
+                        onClick={() => setSelectedTimeframe('5m')}
+                        className="px-3 py-1 text-xs font-medium rounded bg-[#2a2e39] text-white hover:bg-[#363a45] transition-colors"
+                    >
+                        {selectedTimeframe}
+                    </button>
 
-                {/* Center: Timeframe Selector */}
-                <div className="flex items-center gap-1">
-                    {timeframes.map((tf) => (
-                        <button
-                            key={tf}
-                            onClick={() => setSelectedTimeframe(tf)}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${selectedTimeframe === tf
-                                ? 'bg-[#2962ff] text-white'
-                                : 'text-[#787b86] hover:bg-[#1e222d]'
-                                }`}
-                        >
-                            {tf}
-                        </button>
-                    ))}
-                </div>
+                    {/* Sliders Icon */}
+                    <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <Settings className="w-4 h-4" />
+                    </button>
 
-                {/* Right: Indicators and Actions */}
-                <div className="flex items-center gap-2">
+                    {/* Indicators Button */}
                     <div className="relative">
                         <button
                             onClick={() => setShowIndicatorMenu(!showIndicatorMenu)}
-                            className="px-3 py-1.5 text-xs font-medium text-[#787b86] hover:bg-[#1e222d] rounded transition-colors flex items-center gap-1"
+                            className="px-3 py-1 text-xs font-medium text-[#787b86] hover:bg-[#1e222d] rounded transition-colors flex items-center gap-1"
                         >
                             <Activity className="w-3.5 h-3.5" />
                             Indicators
                         </button>
 
                         {showIndicatorMenu && (
-                            <div className="absolute top-full right-0 mt-1 w-48 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1">
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
                                 <button
                                     onClick={() => toggleIndicator('MA')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'
-                                        }`}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     Moving Average
                                 </button>
                                 <button
                                     onClick={() => toggleIndicator('EMA')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'
-                                        }`}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     EMA
                                 </button>
                                 <button
                                     onClick={() => toggleIndicator('BOLL')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'
-                                        }`}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     Bollinger Bands
                                 </button>
                                 <button
                                     onClick={() => toggleIndicator('RSI')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'
-                                        }`}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     RSI
                                 </button>
                                 <button
                                     onClick={() => toggleIndicator('MACD')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'
-                                        }`}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     MACD
                                 </button>
@@ -498,24 +477,41 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                         )}
                     </div>
 
+                    {/* Undo/Redo */}
+                    <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <Undo className="w-4 h-4" />
+                    </button>
+                    <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <Redo className="w-4 h-4" />
+                    </button>
+                </div>
 
-                    {isNiftyChart ? (
-                        // For NIFTY: Show Open Positions button
-                        <button className="px-4 py-1.5 flex items-center justify-center rounded bg-[#2962ff] text-white text-xs font-semibold hover:bg-[#1e53e5] transition-colors">
-                            Open Positions
-                        </button>
-                    ) : (
-                        // For Options: Show Buy and Sell buttons
-                        <>
-                            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#26a69a] text-white text-xs font-bold hover:bg-[#1f8a7f] transition-colors">
-                                B
-                            </button>
-                            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ef5350] text-white text-xs font-bold hover:bg-[#d84946] transition-colors">
-                                S
-                            </button>
-                        </>
-                    )}
+                {/* Right Section - Utility Icons */}
+                <div className="flex items-center gap-2">
+                    {/* Fullscreen */}
+                    <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <Square className="w-4 h-4" />
+                    </button>
 
+                    {/* Settings */}
+                    <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <Settings className="w-4 h-4" />
+                    </button>
+
+                    {/* Screenshot */}
+                    <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+
+                    {/* Expand */}
+                    <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
