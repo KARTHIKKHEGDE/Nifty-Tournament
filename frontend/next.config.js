@@ -2,7 +2,7 @@
 const nextConfig = {
     reactStrictMode: true,
     swcMinify: true,
-    transpilePackages: ['klinecharts'],
+    transpilePackages: ['klinecharts', 'konva', 'react-konva'],
     images: {
         domains: ['localhost'],
     },

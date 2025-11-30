@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     INITIAL_VIRTUAL_BALANCE: float = 100000.0  # ₹1,00,000
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003"
     
     @property
     def cors_origins_list(self) -> List[str]:

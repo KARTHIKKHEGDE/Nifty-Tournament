@@ -474,87 +474,56 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
     return (
         <div className="relative bg-[#0a0a0a] overflow-hidden" style={{ height: typeof height === 'number' ? `${height}px` : height }}>
             {/* Left Toolbar */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#131722] border-r border-[#2a2e39] z-20 flex flex-col items-center py-4 gap-1">
-                <button
-                    onClick={() => setActiveTool('cursor')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'cursor' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
-                    title="Cursor"
-                >
-                    <MousePointer2 className="w-4 h-4" />
-                </button>
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#131722] border-r border-[#2a2e39] z-20 flex flex-col items-center py-4 gap-3">
+                {/* Crosshair / Plus */}
                 <button
                     onClick={() => setActiveTool('crosshair')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'crosshair' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'crosshair' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
                         }`}
                     title="Crosshair"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5" />
                 </button>
 
-                <div className="w-8 h-px bg-[#2a2e39] my-2"></div>
-
+                {/* Line with dots */}
                 <button
-                    onClick={() => setActiveTool('trendline')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'trendline' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                    onClick={() => setActiveTool('line')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'line' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
                         }`}
                     title="Trend Line"
                 >
-                    <Pencil className="w-4 h-4" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="6" cy="18" r="2" />
+                        <line x1="8" y1="18" x2="16" y2="6" />
+                        <circle cx="18" cy="6" r="2" />
+                    </svg>
                 </button>
+
+                {/* Horizontal lines (sliders/levels) */}
                 <button
-                    onClick={() => setActiveTool('horizontal')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'horizontal' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                    onClick={() => setActiveTool('levels')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'levels' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
                         }`}
-                    title="Horizontal Line"
+                    title="Levels"
                 >
-                    <Minus className="w-4 h-4" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="4" y1="6" x2="20" y2="6" />
+                        <line x1="4" y1="12" x2="20" y2="12" />
+                        <line x1="4" y1="18" x2="20" y2="18" />
+                        <circle cx="8" cy="6" r="1.5" fill="currentColor" />
+                        <circle cx="14" cy="12" r="1.5" fill="currentColor" />
+                        <circle cx="10" cy="18" r="1.5" fill="currentColor" />
+                    </svg>
                 </button>
+
+                {/* Text tool */}
                 <button
-                    onClick={() => setActiveTool('rectangle')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'rectangle' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
+                    onClick={() => setActiveTool('text')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'text' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
                         }`}
-                    title="Rectangle"
+                    title="Text"
                 >
-                    <Square className="w-4 h-4" />
-                </button>
-                <button
-                    onClick={() => setActiveTool('circle')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'circle' ? 'bg-[#2962ff] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
-                    title="Circle"
-                >
-                    <Circle className="w-4 h-4" />
-                </button>
-
-                <div className="w-8 h-px bg-[#2a2e39] my-2"></div>
-
-                <button
-                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
-                    title="Measure"
-                >
-                    <Ruler className="w-4 h-4" />
-                </button>
-                <button
-                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
-                    title="Zoom In"
-                >
-                    <Plus className="w-4 h-4" />
-                </button>
-                <button
-                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
-                    title="Zoom Out"
-                >
-                    <Minus className="w-4 h-4" />
-                </button>
-
-                <div className="flex-1"></div>
-
-                <button
-                    className="w-9 h-9 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
-                    title="Settings"
-                >
-                    <Settings className="w-4 h-4" />
+                    <Type className="w-5 h-5" />
                 </button>
             </div>
 
