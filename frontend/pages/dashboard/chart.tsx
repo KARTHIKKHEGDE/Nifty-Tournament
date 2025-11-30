@@ -76,7 +76,7 @@ export default function ChartPage() {
                     <KlineChart
                         data={candles}
                         symbol={symbol}
-                        showVolume={true}
+                        showVolume={false}
                         height={windowHeight}
                         isNiftyChart={false}
                     />

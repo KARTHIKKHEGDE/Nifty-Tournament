@@ -288,9 +288,10 @@ export default function DashboardHome() {
                                         },
                                     ]}
                                     symbol={selectedSymbol.symbol}
-                                    showVolume={true}
+                                    showVolume={false}
                                     height="100%"
                                     onTimeframeChange={handleTimeframeChange}
+                                    currentTimeframe={currentTimeframe}
                                 />
                             )
                         ) : (

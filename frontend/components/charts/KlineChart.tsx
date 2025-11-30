@@ -17,9 +17,10 @@ interface KlineChartProps {
     onLoadMore?: () => void;
     isNiftyChart?: boolean; // If true, shows Open Positions instead of Buy/Sell buttons
     onTimeframeChange?: (timeframe: string) => void; // Callback when timeframe changes
+    currentTimeframe?: string; // Current timeframe from parent
 }
 
-function KlineChartComponent({ data, symbol, showVolume = true, height = 600, onLoadMore, isNiftyChart = false, onTimeframeChange }: KlineChartProps) {
+function KlineChartComponent({ data, symbol, showVolume = false, height = 600, onLoadMore, isNiftyChart = false, onTimeframeChange, currentTimeframe }: KlineChartProps) {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
     const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -31,6 +32,13 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
     const [activeTool, setActiveTool] = useState<string>('cursor');
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
+
+    // Sync selectedTimeframe with currentTimeframe prop
+    useEffect(() => {
+        if (currentTimeframe && currentTimeframe !== selectedTimeframe) {
+            setSelectedTimeframe(currentTimeframe);
+        }
+    }, [currentTimeframe]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -307,6 +315,11 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                 isOverlay = false;
                 paneId = 'macd_pane';
                 break;
+            case 'VOL':
+                calcParams = [];
+                isOverlay = false;
+                paneId = 'volume_pane';
+                break;
         }
 
         if (activeIndicators.includes(indicatorName)) {
@@ -497,6 +510,12 @@ function KlineChartComponent({ data, symbol, showVolume = true, height = 600, on
                                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'}`}
                                 >
                                     MACD
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('VOL')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VOL') ? 'text-[#2962ff]' : 'text-white'}`}
+                                >
+                                    Volume
                                 </button>
                             </div>
                         )}

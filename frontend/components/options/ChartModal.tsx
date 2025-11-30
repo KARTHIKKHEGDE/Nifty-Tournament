@@ -81,7 +81,7 @@ export default function ChartModal({ option, initialSide, onClose }: ChartModalP
                                     },
                                 ]}
                                 symbol={option.symbol}
-                                showVolume={true}
+                                showVolume={false}
                                 height={window.innerHeight - 100}
                             />
                         </div>
@@ -154,7 +154,7 @@ export default function ChartModal({ option, initialSide, onClose }: ChartModalP
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-400">Change %</span>
                                     <span className={`text-sm font-semibold ${option.change_percent > 0 ? 'text-green-500' :
-                                            option.change_percent < 0 ? 'text-red-500' : 'text-gray-400'
+                                        option.change_percent < 0 ? 'text-red-500' : 'text-gray-400'
                                         }`}>
                                         {option.change_percent > 0 ? '+' : ''}{option.change_percent.toFixed(2)}%
                                     </span>
