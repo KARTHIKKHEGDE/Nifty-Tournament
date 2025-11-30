@@ -50,6 +50,9 @@
             ],
             "@/hooks/*": [
                 "./hooks/*"
+            ],
+            "@/Klineutils/*": [
+                "./Klineutils/*"
             ]
         }
     },
