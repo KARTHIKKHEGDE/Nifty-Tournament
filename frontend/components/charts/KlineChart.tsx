@@ -56,8 +56,57 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
         let disposeFunc: any = null;
         let mounted = true;
 
-        import('klinecharts').then(({ init, dispose }) => {
+        import('klinecharts').then((klinecharts: any) => {
+            const { init, dispose, registerIndicator } = klinecharts;
             if (!chartRef.current || !mounted) return;
+
+            // Register ATR Indicator
+            registerIndicator({
+                name: 'ATR',
+                shortName: 'ATR',
+                calcParams: [14],
+                figures: [
+                    { key: 'atr', title: 'ATR: ', type: 'line' }
+                ],
+                calc: (dataList: any[], indicator: any) => {
+                    const params = indicator.calcParams;
+                    const period = params[0];
+                    const result: any[] = [];
+                    const trList: number[] = [];
+
+                    dataList.forEach((kLineData, i) => {
+                        const prevClose = i > 0 ? dataList[i - 1].close : kLineData.open;
+                        const high = kLineData.high;
+                        const low = kLineData.low;
+
+                        const tr = Math.max(
+                            high - low,
+                            Math.abs(high - prevClose),
+                            Math.abs(low - prevClose)
+                        );
+                        trList.push(tr);
+
+                        let atr;
+                        if (i >= period - 1) {
+                            if (i === period - 1) {
+                                // First ATR is simple average of TR
+                                let sum = 0;
+                                for (let j = 0; j < period; j++) {
+                                    sum += trList[j];
+                                }
+                                atr = sum / period;
+                            } else {
+                                // Subsequent ATRs: (Previous ATR * (n-1) + Current TR) / n
+                                const prevAtr = result[i - 1].atr;
+                                atr = (prevAtr * (period - 1) + tr) / period;
+                            }
+                        }
+
+                        result.push({ atr: atr });
+                    });
+                    return result;
+                }
+            });
 
             disposeFunc = dispose;
 
@@ -293,32 +342,116 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
         let calcParams: number[] = [];
 
         switch (indicatorName) {
+            // Trend Indicators (Overlay)
             case 'MA':
-                calcParams = [9];
+                calcParams = [5, 10, 20, 60];
                 isOverlay = true;
                 break;
             case 'EMA':
-                calcParams = [9, 21];
+                calcParams = [6, 12, 26];
+                isOverlay = true;
+                break;
+            case 'SMA':
+                calcParams = [12, 26];
+                isOverlay = true;
+                break;
+            case 'WMA':
+                calcParams = [12, 26];
+                isOverlay = true;
+                break;
+            case 'BBI':
+                calcParams = [3, 6, 12, 24];
                 isOverlay = true;
                 break;
             case 'BOLL':
                 calcParams = [20, 2];
                 isOverlay = true;
                 break;
-            case 'RSI':
-                calcParams = [14];
-                isOverlay = false;
-                paneId = 'rsi_pane';
+            case 'SAR':
+                calcParams = [2, 2, 20];
+                isOverlay = true;
                 break;
+            case 'ICHIMOKU':
+                calcParams = [26, 9, 52];
+                isOverlay = true;
+                break;
+
+            // Momentum Indicators (Separate Pane)
             case 'MACD':
                 calcParams = [12, 26, 9];
                 isOverlay = false;
                 paneId = 'macd_pane';
                 break;
+            case 'KDJ':
+                calcParams = [9, 3, 3];
+                isOverlay = false;
+                paneId = 'kdj_pane';
+                break;
+            case 'RSI':
+                calcParams = [6, 12, 24];
+                isOverlay = false;
+                paneId = 'rsi_pane';
+                break;
+            case 'WR':
+                calcParams = [6, 10, 14];
+                isOverlay = false;
+                paneId = 'wr_pane';
+                break;
+            case 'ROC':
+                calcParams = [12, 6];
+                isOverlay = false;
+                paneId = 'roc_pane';
+                break;
+            case 'CCI':
+                calcParams = [13];
+                isOverlay = false;
+                paneId = 'cci_pane';
+                break;
+            case 'TRIX':
+                calcParams = [12, 9];
+                isOverlay = false;
+                paneId = 'trix_pane';
+                break;
+
+            // Volume Indicators
             case 'VOL':
-                calcParams = [];
+                calcParams = [5, 10, 20];
                 isOverlay = false;
                 paneId = 'volume_pane';
+                break;
+            case 'OBV':
+                calcParams = [30];
+                isOverlay = false;
+                paneId = 'obv_pane';
+                break;
+
+            // Volatility Indicators
+            case 'ATR':
+                calcParams = [14];
+                isOverlay = false;
+                paneId = 'atr_pane';
+                break;
+            case 'BIAS':
+                calcParams = [6, 12, 24];
+                isOverlay = false;
+                paneId = 'bias_pane';
+                break;
+
+            // Market Strength Indicators
+            case 'BRAR':
+                calcParams = [26];
+                isOverlay = false;
+                paneId = 'brar_pane';
+                break;
+            case 'VR':
+                calcParams = [26, 6];
+                isOverlay = false;
+                paneId = 'vr_pane';
+                break;
+            case 'PSY':
+                calcParams = [12, 6];
+                isOverlay = false;
+                paneId = 'psy_pane';
                 break;
         }
 
@@ -480,43 +613,51 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                         </button>
 
                         {showIndicatorMenu && (
-                            <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
-                                <button
-                                    onClick={() => toggleIndicator('MA')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    Moving Average
-                                </button>
-                                <button
-                                    onClick={() => toggleIndicator('EMA')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    EMA
-                                </button>
-                                <button
-                                    onClick={() => toggleIndicator('BOLL')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    Bollinger Bands
-                                </button>
-                                <button
-                                    onClick={() => toggleIndicator('RSI')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    RSI
-                                </button>
-                                <button
-                                    onClick={() => toggleIndicator('MACD')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    MACD
-                                </button>
-                                <button
-                                    onClick={() => toggleIndicator('VOL')}
-                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VOL') ? 'text-[#2962ff]' : 'text-white'}`}
-                                >
-                                    Volume
-                                </button>
+                            <div className="absolute top-full left-0 mt-1 w-56 max-h-96 overflow-y-auto bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
+                                {/* Trend Indicators */}
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Trend</div>
+                                <button onClick={() => toggleIndicator('MA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'}`}>MA - Moving Average</button>
+                                <button onClick={() => toggleIndicator('EMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'}`}>EMA - Exponential MA</button>
+                                <button onClick={() => toggleIndicator('SMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('SMA') ? 'text-[#2962ff]' : 'text-white'}`}>SMA - Smoothed MA</button>
+                                <button onClick={() => toggleIndicator('WMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('WMA') ? 'text-[#2962ff]' : 'text-white'}`}>WMA - Weighted MA</button>
+                                <button onClick={() => toggleIndicator('BBI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BBI') ? 'text-[#2962ff]' : 'text-white'}`}>BBI - Bull Bear Index</button>
+                                <button onClick={() => toggleIndicator('BOLL')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'}`}>BOLL - Bollinger Bands</button>
+                                <button onClick={() => toggleIndicator('SAR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('SAR') ? 'text-[#2962ff]' : 'text-white'}`}>SAR - Parabolic SAR</button>
+                                <button onClick={() => toggleIndicator('ICHIMOKU')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ICHIMOKU') ? 'text-[#2962ff]' : 'text-white'}`}>ICHIMOKU - Ichimoku Cloud</button>
+
+                                <div className="border-t border-[#2a2e39] my-1"></div>
+
+                                {/* Momentum Indicators */}
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Momentum</div>
+                                <button onClick={() => toggleIndicator('MACD')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'}`}>MACD</button>
+                                <button onClick={() => toggleIndicator('KDJ')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('KDJ') ? 'text-[#2962ff]' : 'text-white'}`}>KDJ - Stochastic</button>
+                                <button onClick={() => toggleIndicator('RSI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'}`}>RSI</button>
+                                <button onClick={() => toggleIndicator('WR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('WR') ? 'text-[#2962ff]' : 'text-white'}`}>WR - Williams %R</button>
+                                <button onClick={() => toggleIndicator('ROC')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ROC') ? 'text-[#2962ff]' : 'text-white'}`}>ROC - Rate of Change</button>
+                                <button onClick={() => toggleIndicator('CCI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('CCI') ? 'text-[#2962ff]' : 'text-white'}`}>CCI - Commodity Channel</button>
+                                <button onClick={() => toggleIndicator('TRIX')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('TRIX') ? 'text-[#2962ff]' : 'text-white'}`}>TRIX - Triple EMA</button>
+
+                                <div className="border-t border-[#2a2e39] my-1"></div>
+
+                                {/* Volume Indicators */}
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Volume</div>
+                                <button onClick={() => toggleIndicator('VOL')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VOL') ? 'text-[#2962ff]' : 'text-white'}`}>VOL - Volume</button>
+                                <button onClick={() => toggleIndicator('OBV')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('OBV') ? 'text-[#2962ff]' : 'text-white'}`}>OBV - On-Balance Volume</button>
+
+                                <div className="border-t border-[#2a2e39] my-1"></div>
+
+                                {/* Volatility Indicators */}
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Volatility</div>
+                                <button onClick={() => toggleIndicator('ATR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ATR') ? 'text-[#2962ff]' : 'text-white'}`}>ATR - Average True Range</button>
+                                <button onClick={() => toggleIndicator('BIAS')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BIAS') ? 'text-[#2962ff]' : 'text-white'}`}>BIAS - Price Deviation</button>
+
+                                <div className="border-t border-[#2a2e39] my-1"></div>
+
+                                {/* Market Strength */}
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Market Strength</div>
+                                <button onClick={() => toggleIndicator('BRAR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BRAR') ? 'text-[#2962ff]' : 'text-white'}`}>BRAR - Buy/Sell Power</button>
+                                <button onClick={() => toggleIndicator('VR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VR') ? 'text-[#2962ff]' : 'text-white'}`}>VR - Volume Ratio</button>
+                                <button onClick={() => toggleIndicator('PSY')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('PSY') ? 'text-[#2962ff]' : 'text-white'}`}>PSY - Psychological Line</button>
                             </div>
                         )}
                     </div>
