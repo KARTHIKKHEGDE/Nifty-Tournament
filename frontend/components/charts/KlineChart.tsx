@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { CandleData } from '../../types';
 import {
-    Plus, Minus, TrendingUp, TrendingDown, Move, MousePointer2,
+    Minus, TrendingUp, TrendingDown, Move, MousePointer2,
     Pencil, Ruler, Circle, Square, Triangle, Type, Trash2,
     Undo, Redo, Settings, ChevronLeft, ChevronRight, ChevronDown, Activity
 } from 'lucide-react';
@@ -20,9 +20,19 @@ interface KlineChartProps {
     currentTimeframe?: string; // Current timeframe from parent
 }
 
-function KlineChartComponent({ data, symbol, showVolume = false, height = 600, onLoadMore, isNiftyChart = false, onTimeframeChange, currentTimeframe }: KlineChartProps) {
+function KlineChartComponent({
+    data,
+    symbol,
+    showVolume = false,
+    height = 600,
+    onLoadMore,
+    isNiftyChart = false,
+    onTimeframeChange,
+    currentTimeframe,
+}: KlineChartProps) {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<any>(null);
+
     const [currentPrice, setCurrentPrice] = useState<number>(0);
     const [priceChange, setPriceChange] = useState<number>(0);
     const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
@@ -33,13 +43,17 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
     const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
 
+    // Currently selected overlay (for delete, etc.)
+    const [selectedOverlay, setSelectedOverlay] = useState<any>(null);
+
     // Sync selectedTimeframe with currentTimeframe prop
     useEffect(() => {
         if (currentTimeframe && currentTimeframe !== selectedTimeframe) {
             setSelectedTimeframe(currentTimeframe);
         }
-    }, [currentTimeframe]);
+    }, [currentTimeframe, selectedTimeframe]);
 
+    // Resize handler
     useEffect(() => {
         const handleResize = () => {
             if (chartInstance.current) {
@@ -50,251 +64,256 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Init chart
     useEffect(() => {
         if (!chartRef.current) return;
 
         let disposeFunc: any = null;
         let mounted = true;
 
-        import('klinecharts').then((klinecharts: any) => {
-            const { init, dispose, registerIndicator } = klinecharts;
-            if (!chartRef.current || !mounted) return;
+        import('klinecharts')
+            .then((klinecharts: any) => {
+                const { init, dispose, registerIndicator } = klinecharts;
+                if (!chartRef.current || !mounted) return;
 
-            // Register ATR Indicator
-            registerIndicator({
-                name: 'ATR',
-                shortName: 'ATR',
-                calcParams: [14],
-                figures: [
-                    { key: 'atr', title: 'ATR: ', type: 'line' }
-                ],
-                calc: (dataList: any[], indicator: any) => {
-                    const params = indicator.calcParams;
-                    const period = params[0];
-                    const result: any[] = [];
-                    const trList: number[] = [];
+                // Register ATR Indicator
+                registerIndicator({
+                    name: 'ATR',
+                    shortName: 'ATR',
+                    calcParams: [14],
+                    figures: [{ key: 'atr', title: 'ATR: ', type: 'line' }],
+                    calc: (dataList: any[], indicator: any) => {
+                        const params = indicator.calcParams;
+                        const period = params[0];
+                        const result: any[] = [];
+                        const trList: number[] = [];
 
-                    dataList.forEach((kLineData, i) => {
-                        const prevClose = i > 0 ? dataList[i - 1].close : kLineData.open;
-                        const high = kLineData.high;
-                        const low = kLineData.low;
+                        dataList.forEach((kLineData, i) => {
+                            const prevClose =
+                                i > 0 ? dataList[i - 1].close : kLineData.open;
+                            const high = kLineData.high;
+                            const low = kLineData.low;
 
-                        const tr = Math.max(
-                            high - low,
-                            Math.abs(high - prevClose),
-                            Math.abs(low - prevClose)
-                        );
-                        trList.push(tr);
+                            const tr = Math.max(
+                                high - low,
+                                Math.abs(high - prevClose),
+                                Math.abs(low - prevClose)
+                            );
+                            trList.push(tr);
 
-                        let atr;
-                        if (i >= period - 1) {
-                            if (i === period - 1) {
-                                // First ATR is simple average of TR
-                                let sum = 0;
-                                for (let j = 0; j < period; j++) {
-                                    sum += trList[j];
+                            let atr;
+                            if (i >= period - 1) {
+                                if (i === period - 1) {
+                                    // First ATR is simple average of TR
+                                    let sum = 0;
+                                    for (let j = 0; j < period; j++) {
+                                        sum += trList[j];
+                                    }
+                                    atr = sum / period;
+                                } else {
+                                    // Subsequent ATRs: (Previous ATR * (n-1) + Current TR) / n
+                                    const prevAtr = result[i - 1].atr;
+                                    atr =
+                                        (prevAtr * (period - 1) + tr) / period;
                                 }
-                                atr = sum / period;
-                            } else {
-                                // Subsequent ATRs: (Previous ATR * (n-1) + Current TR) / n
-                                const prevAtr = result[i - 1].atr;
-                                atr = (prevAtr * (period - 1) + tr) / period;
                             }
-                        }
 
-                        result.push({ atr: atr });
-                    });
-                    return result;
-                }
-            });
-
-            disposeFunc = dispose;
-
-            try {
-                chartInstance.current = init(chartRef.current, {
-                    styles: {
-                        grid: {
-                            show: true,
-                            horizontal: {
-                                show: true,
-                                size: 1,
-                                color: '#1a1a1a',
-                                style: 'dashed',
-                            },
-                            vertical: {
-                                show: true,
-                                size: 1,
-                                color: '#1a1a1a',
-                                style: 'dashed',
-                            },
-                        },
-                        candle: {
-                            type: 'candle_solid',
-                            bar: {
-                                upColor: '#26a69a',
-                                downColor: '#ef5350',
-                                noChangeColor: '#888888',
-                                upBorderColor: '#26a69a',
-                                downBorderColor: '#ef5350',
-                                noChangeBorderColor: '#888888',
-                                upWickColor: '#26a69a',
-                                downWickColor: '#ef5350',
-                                noChangeWickColor: '#888888',
-                            },
-                            tooltip: {
-                                showRule: 'always',
-                                showType: 'standard',
-                                labels: ['O', 'H', 'L', 'C'],
-                                text: {
-                                    size: 11,
-                                    family: 'Arial, sans-serif',
-                                    weight: 'normal',
-                                    color: '#ffffff',
-                                },
-                            },
-                        },
-                        indicator: {
-                            tooltip: {
-                                showRule: 'always',
-                                showType: 'standard',
-                                text: {
-                                    size: 11,
-                                    family: 'Arial, sans-serif',
-                                    weight: 'normal',
-                                    color: '#ffffff',
-                                },
-                            },
-                            bars: [
-                                {
-                                    style: 'solid',
-                                    color: '#2962ff',
-                                    size: 1,
-                                },
-                                {
-                                    style: 'solid',
-                                    color: '#ff6d00',
-                                    size: 1,
-                                },
-                                {
-                                    style: 'solid',
-                                    color: '#ab47bc',
-                                    size: 1,
-                                },
-                            ],
-                        },
-                        xAxis: {
-                            show: true,
-                            axisLine: {
-                                show: true,
-                                color: '#2a2a2a',
-                                size: 1,
-                            },
-                            tickLine: {
-                                show: false,
-                            },
-                            tickText: {
-                                show: true,
-                                color: '#888888',
-                                family: 'Arial, sans-serif',
-                                size: 11,
-                                weight: 'normal',
-                            },
-                        },
-                        yAxis: {
-                            show: true,
-                            position: 'right',
-                            type: 'normal',
-                            inside: false,
-                            reverse: false,
-                            axisLine: {
-                                show: true,
-                                color: '#2a2a2a',
-                                size: 1,
-                            },
-                            tickLine: {
-                                show: false,
-                            },
-                            tickText: {
-                                show: true,
-                                color: '#888888',
-                                family: 'Arial, sans-serif',
-                                size: 11,
-                                weight: 'normal',
-                            },
-                        },
-                        crosshair: {
-                            show: true,
-                            horizontal: {
-                                show: true,
-                                line: {
-                                    show: true,
-                                    style: 'dashed',
-                                    dashValue: [4, 2],
-                                    size: 1,
-                                    color: '#888888',
-                                },
-                                text: {
-                                    show: true,
-                                    color: '#ffffff',
-                                    size: 11,
-                                    family: 'Arial, sans-serif',
-                                    weight: 'normal',
-                                    backgroundColor: '#888888',
-                                    borderRadius: 2,
-                                    paddingLeft: 4,
-                                    paddingRight: 4,
-                                    paddingTop: 2,
-                                    paddingBottom: 2,
-                                },
-                            },
-                            vertical: {
-                                show: true,
-                                line: {
-                                    show: true,
-                                    style: 'dashed',
-                                    dashValue: [4, 2],
-                                    size: 1,
-                                    color: '#888888',
-                                },
-                                text: {
-                                    show: true,
-                                    color: '#ffffff',
-                                    size: 11,
-                                    family: 'Arial, sans-serif',
-                                    weight: 'normal',
-                                    backgroundColor: '#888888',
-                                    borderRadius: 2,
-                                    paddingLeft: 4,
-                                    paddingRight: 4,
-                                    paddingTop: 2,
-                                    paddingBottom: 2,
-                                },
-                            },
-                        },
+                            result.push({ atr: atr });
+                        });
+                        return result;
                     },
                 });
 
-                if (showVolume) {
-                    chartInstance.current.createIndicator('VOL', false, {
-                        id: 'volume_pane',
-                        height: 80,
-                    });
-                }
+                disposeFunc = dispose;
 
-                setChartReady(true);
-
-                if (onLoadMore) {
-                    chartInstance.current.setLoadMoreDataCallback(({ timestamp }: { timestamp: number }) => {
-                        onLoadMore();
-                        return null;
+                try {
+                    chartInstance.current = init(chartRef.current, {
+                        styles: {
+                            grid: {
+                                show: true,
+                                horizontal: {
+                                    show: true,
+                                    size: 1,
+                                    color: '#1a1a1a',
+                                    style: 'dashed',
+                                },
+                                vertical: {
+                                    show: true,
+                                    size: 1,
+                                    color: '#1a1a1a',
+                                    style: 'dashed',
+                                },
+                            },
+                            candle: {
+                                type: 'candle_solid',
+                                bar: {
+                                    upColor: '#26a69a',
+                                    downColor: '#ef5350',
+                                    noChangeColor: '#888888',
+                                    upBorderColor: '#26a69a',
+                                    downBorderColor: '#ef5350',
+                                    noChangeBorderColor: '#888888',
+                                    upWickColor: '#26a69a',
+                                    downWickColor: '#ef5350',
+                                    noChangeWickColor: '#888888',
+                                },
+                                tooltip: {
+                                    showRule: 'always',
+                                    showType: 'standard',
+                                    labels: ['O', 'H', 'L', 'C'],
+                                    text: {
+                                        size: 11,
+                                        family: 'Arial, sans-serif',
+                                        weight: 'normal',
+                                        color: '#ffffff',
+                                    },
+                                },
+                            },
+                            indicator: {
+                                tooltip: {
+                                    showRule: 'always',
+                                    showType: 'standard',
+                                    text: {
+                                        size: 11,
+                                        family: 'Arial, sans-serif',
+                                        weight: 'normal',
+                                        color: '#ffffff',
+                                    },
+                                },
+                                bars: [
+                                    {
+                                        style: 'solid',
+                                        color: '#2962ff',
+                                        size: 1,
+                                    },
+                                    {
+                                        style: 'solid',
+                                        color: '#ff6d00',
+                                        size: 1,
+                                    },
+                                    {
+                                        style: 'solid',
+                                        color: '#ab47bc',
+                                        size: 1,
+                                    },
+                                ],
+                            },
+                            xAxis: {
+                                show: true,
+                                axisLine: {
+                                    show: true,
+                                    color: '#2a2a2a',
+                                    size: 1,
+                                },
+                                tickLine: {
+                                    show: false,
+                                },
+                                tickText: {
+                                    show: true,
+                                    color: '#888888',
+                                    family: 'Arial, sans-serif',
+                                    size: 11,
+                                    weight: 'normal',
+                                },
+                            },
+                            yAxis: {
+                                show: true,
+                                position: 'right',
+                                type: 'normal',
+                                inside: false,
+                                reverse: false,
+                                axisLine: {
+                                    show: true,
+                                    color: '#2a2a2a',
+                                    size: 1,
+                                },
+                                tickLine: {
+                                    show: false,
+                                },
+                                tickText: {
+                                    show: true,
+                                    color: '#888888',
+                                    family: 'Arial, sans-serif',
+                                    size: 11,
+                                    weight: 'normal',
+                                },
+                            },
+                            crosshair: {
+                                show: true,
+                                horizontal: {
+                                    show: true,
+                                    line: {
+                                        show: true,
+                                        style: 'dashed',
+                                        dashValue: [4, 2],
+                                        size: 1,
+                                        color: '#888888',
+                                    },
+                                    text: {
+                                        show: true,
+                                        color: '#ffffff',
+                                        size: 11,
+                                        family: 'Arial, sans-serif',
+                                        weight: 'normal',
+                                        backgroundColor: '#888888',
+                                        borderRadius: 2,
+                                        paddingLeft: 4,
+                                        paddingRight: 4,
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                    },
+                                },
+                                vertical: {
+                                    show: true,
+                                    line: {
+                                        show: true,
+                                        style: 'dashed',
+                                        dashValue: [4, 2],
+                                        size: 1,
+                                        color: '#888888',
+                                    },
+                                    text: {
+                                        show: true,
+                                        color: '#ffffff',
+                                        size: 11,
+                                        family: 'Arial, sans-serif',
+                                        weight: 'normal',
+                                        backgroundColor: '#888888',
+                                        borderRadius: 2,
+                                        paddingLeft: 4,
+                                        paddingRight: 4,
+                                        paddingTop: 2,
+                                        paddingBottom: 2,
+                                    },
+                                },
+                            },
+                        },
                     });
+
+                    if (showVolume) {
+                        chartInstance.current.createIndicator('VOL', false, {
+                            id: 'volume_pane',
+                            height: 80,
+                        });
+                    }
+
+                    setChartReady(true);
+
+                    if (onLoadMore) {
+                        chartInstance.current.setLoadMoreDataCallback(
+                            ({ timestamp }: { timestamp: number }) => {
+                                onLoadMore();
+                                return null;
+                            }
+                        );
+                    }
+                } catch (initError) {
+                    console.error('Error initializing chart:', initError);
                 }
-            } catch (initError) {
-                console.error('Error initializing chart:', initError);
-            }
-        }).catch((error) => {
-            console.error('Error loading klinecharts:', error);
-        });
+            })
+            .catch((error) => {
+                console.error('Error loading klinecharts:', error);
+            });
 
         return () => {
             mounted = false;
@@ -303,8 +322,9 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                 chartInstance.current = null;
             }
         };
-    }, [showVolume]);
+    }, [showVolume, onLoadMore]);
 
+    // Apply data to chart
     useEffect(() => {
         if (chartInstance.current && data.length > 0 && chartReady) {
             const formattedData = data.map((candle) => ({
@@ -334,6 +354,7 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
         }
     }, [data, chartReady]);
 
+    // Indicator toggle logic (unchanged)
     const toggleIndicator = (indicatorName: string) => {
         if (!chartInstance.current) return;
 
@@ -457,7 +478,9 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
         if (activeIndicators.includes(indicatorName)) {
             chartInstance.current.removeIndicator(paneId, indicatorName);
-            setActiveIndicators(activeIndicators.filter(ind => ind !== indicatorName));
+            setActiveIndicators(
+                activeIndicators.filter((ind) => ind !== indicatorName)
+            );
         } else {
             chartInstance.current.createIndicator(indicatorName, isOverlay, {
                 id: paneId,
@@ -468,45 +491,161 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
         setShowIndicatorMenu(false);
     };
 
+    // 🔹 GRAWW-STYLE LINE TOOL HANDLER 🔹
+    const handleToolClick = (tool: string) => {
+        setActiveTool(tool);
+
+        if (!chartInstance.current) return;
+
+        if (tool === 'line') {
+            // Create a straight line segment that finishes on second click
+            chartInstance.current.createOverlay({
+                name: 'segment',
+                groupId: 'drawing', // so ESC can clear all drawings in this group
+                mode: 'normal', // 2-click draw
+                lock: false,
+                styles: {
+                    line: {
+                        color: '#03a9f4', // Groww-style blue
+                        size: 1.5,
+                    },
+                    point: {
+                        show: true,
+                        color: '#03a9f4',
+                        radius: 3,
+                    },
+                },
+                onDrawStart: (event: any) => {
+                    // optional logging
+                    // console.log('Line drawing started', event);
+                },
+                onDrawing: (event: any) => {
+                    // console.log('Drawing in progress', event);
+                },
+                onDrawEnd: (event: any) => {
+                    const overlay = event?.overlay;
+                    if (overlay) {
+                        setSelectedOverlay(overlay);
+                    }
+                    // Auto switch back to cursor after drawing one line (Groww behaviour)
+                    setActiveTool('cursor');
+                },
+                onSelected: (event: any) => {
+                    const overlay = event?.overlay;
+                    if (overlay) {
+                        setSelectedOverlay(overlay);
+                    }
+                },
+                onDeselected: () => {
+                    setSelectedOverlay(null);
+                },
+            });
+        } else if (tool === 'cursor') {
+            // Exit draw mode visually
+            setSelectedOverlay(null);
+        } else if (tool === 'levels') {
+            // Future: horizontal lines / levels
+        } else if (tool === 'text') {
+            // Future: text annotation tool
+        }
+    };
+
+    const handleClearAllOverlays = () => {
+        if (chartInstance.current) {
+            chartInstance.current.removeOverlay(); // no args = remove all overlays
+            setSelectedOverlay(null);
+        }
+    };
+
+    const handleDeleteSelectedOverlay = () => {
+        if (selectedOverlay && chartInstance.current && selectedOverlay.id) {
+            chartInstance.current.removeOverlay(selectedOverlay.id);
+            setSelectedOverlay(null);
+        }
+    };
+
+    // ESC + Delete keyboard handling
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (activeTool === 'line' && chartInstance.current) {
+                    // Clear all drawing-group overlays (including in-progress)
+                    chartInstance.current.removeOverlay({
+                        groupId: 'drawing',
+                    });
+                }
+                setActiveTool('cursor');
+                setSelectedOverlay(null);
+            }
+
+            if (
+                (e.key === 'Delete' || e.key === 'Backspace') &&
+                selectedOverlay
+            ) {
+                e.preventDefault(); // avoid browser navigation
+                handleDeleteSelectedOverlay();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeTool, selectedOverlay]);
+
     const isPriceUp = priceChange >= 0;
     const timeframes = ['5y', '1y', '3m', '1m', '5d', '1d'];
 
     return (
-        <div className="relative bg-[#0a0a0a] overflow-hidden" style={{ height: typeof height === 'number' ? `${height}px` : height }}>
+        <div
+            className="relative bg-[#0a0a0a] overflow-hidden"
+            style={{
+                height:
+                    typeof height === 'number' ? `${height}px` : height,
+            }}
+        >
             {/* Left Toolbar */}
             <div className="absolute left-0 top-0 bottom-0 w-12 bg-[#131722] border-r border-[#2a2e39] z-20 flex flex-col items-center py-4 gap-3">
-                {/* Crosshair / Plus */}
+                {/* Line with dots (Groww-style line tool) */}
                 <button
-                    onClick={() => setActiveTool('crosshair')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'crosshair' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
-                    title="Crosshair"
-                >
-                    <Plus className="w-5 h-5" />
-                </button>
-
-                {/* Line with dots */}
-                <button
-                    onClick={() => setActiveTool('line')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'line' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
+                    onClick={() => handleToolClick('line')}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+                        activeTool === 'line'
+                            ? 'bg-[#2a2e39] text-white'
+                            : 'text-[#787b86] hover:bg-[#1e222d]'
+                    }`}
                     title="Trend Line"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         <circle cx="6" cy="18" r="2" />
                         <line x1="8" y1="18" x2="16" y2="6" />
                         <circle cx="18" cy="6" r="2" />
                     </svg>
                 </button>
 
-                {/* Horizontal lines (sliders/levels) */}
+                {/* Horizontal levels placeholder */}
                 <button
                     onClick={() => setActiveTool('levels')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'levels' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+                        activeTool === 'levels'
+                            ? 'bg-[#2a2e39] text-white'
+                            : 'text-[#787b86] hover:bg-[#1e222d]'
+                    }`}
                     title="Levels"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
                         <line x1="4" y1="6" x2="20" y2="6" />
                         <line x1="4" y1="12" x2="20" y2="12" />
                         <line x1="4" y1="18" x2="20" y2="18" />
@@ -516,14 +655,26 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                     </svg>
                 </button>
 
-                {/* Text tool */}
+                {/* Text tool placeholder */}
                 <button
                     onClick={() => setActiveTool('text')}
-                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'text' ? 'bg-[#2a2e39] text-white' : 'text-[#787b86] hover:bg-[#1e222d]'
-                        }`}
+                    className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+                        activeTool === 'text'
+                            ? 'bg-[#2a2e39] text-white'
+                            : 'text-[#787b86] hover:bg-[#1e222d]'
+                    }`}
                     title="Text"
                 >
                     <Type className="w-5 h-5" />
+                </button>
+
+                {/* Clear All Drawings */}
+                <button
+                    onClick={handleClearAllOverlays}
+                    className="w-9 h-9 flex items-center justify-center rounded transition-colors text-red-500 hover:bg-[#1e222d]"
+                    title="Clear All Drawings"
+                >
+                    <Trash2 className="w-5 h-5" />
                 </button>
             </div>
 
@@ -532,12 +683,16 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                 {/* Left Section */}
                 <div className="flex items-center gap-3">
                     {/* Symbol Name */}
-                    <h3 className="text-white font-semibold text-sm">{symbol}</h3>
+                    <h3 className="text-white font-semibold text-sm">
+                        {symbol}
+                    </h3>
 
                     {/* Timeframe Selector */}
                     <div className="relative">
                         <button
-                            onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
+                            onClick={() =>
+                                setShowTimeframeMenu(!showTimeframeMenu)
+                            }
                             className="px-3 py-1 text-xs font-medium rounded bg-[#2a2e39] text-white hover:bg-[#363a45] transition-colors flex items-center gap-1"
                         >
                             {selectedTimeframe}
@@ -546,22 +701,27 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
                         {showTimeframeMenu && (
                             <div className="absolute top-full left-0 mt-1 w-32 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
-                                {['1m', '3m', '5m', '15m', '30m', '1h', '1d'].map((tf) => (
-                                    <button
-                                        key={tf}
-                                        onClick={() => {
-                                            setSelectedTimeframe(tf);
-                                            setShowTimeframeMenu(false);
-                                            if (onTimeframeChange) {
-                                                onTimeframeChange(tf);
-                                            }
-                                        }}
-                                        className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf ? 'text-[#2962ff] bg-[#2a2e39]' : 'text-white'
+                                {['1m', '3m', '5m', '15m', '30m', '1h', '1d'].map(
+                                    (tf) => (
+                                        <button
+                                            key={tf}
+                                            onClick={() => {
+                                                setSelectedTimeframe(tf);
+                                                setShowTimeframeMenu(false);
+                                                if (onTimeframeChange) {
+                                                    onTimeframeChange(tf);
+                                                }
+                                            }}
+                                            className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                                selectedTimeframe === tf
+                                                    ? 'text-[#2962ff] bg-[#2a2e39]'
+                                                    : 'text-white'
                                             }`}
-                                    >
-                                        {tf}
-                                    </button>
-                                ))}
+                                        >
+                                            {tf}
+                                        </button>
+                                    )
+                                )}
                             </div>
                         )}
                     </div>
@@ -574,7 +734,9 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                     {/* Indicators Button */}
                     <div className="relative">
                         <button
-                            onClick={() => setShowIndicatorMenu(!showIndicatorMenu)}
+                            onClick={() =>
+                                setShowIndicatorMenu(!showIndicatorMenu)
+                            }
                             className="px-3 py-1 text-xs font-medium text-[#787b86] hover:bg-[#1e222d] rounded transition-colors flex items-center gap-1"
                         >
                             <Activity className="w-3.5 h-3.5" />
@@ -584,54 +746,264 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
                         {showIndicatorMenu && (
                             <div className="absolute top-full left-0 mt-1 w-56 max-h-96 overflow-y-auto bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
                                 {/* Trend Indicators */}
-                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Trend</div>
-                                <button onClick={() => toggleIndicator('MA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MA') ? 'text-[#2962ff]' : 'text-white'}`}>MA - Moving Average</button>
-                                <button onClick={() => toggleIndicator('EMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('EMA') ? 'text-[#2962ff]' : 'text-white'}`}>EMA - Exponential MA</button>
-                                <button onClick={() => toggleIndicator('SMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('SMA') ? 'text-[#2962ff]' : 'text-white'}`}>SMA - Smoothed MA</button>
-                                <button onClick={() => toggleIndicator('WMA')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('WMA') ? 'text-[#2962ff]' : 'text-white'}`}>WMA - Weighted MA</button>
-                                <button onClick={() => toggleIndicator('BBI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BBI') ? 'text-[#2962ff]' : 'text-white'}`}>BBI - Bull Bear Index</button>
-                                <button onClick={() => toggleIndicator('BOLL')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BOLL') ? 'text-[#2962ff]' : 'text-white'}`}>BOLL - Bollinger Bands</button>
-                                <button onClick={() => toggleIndicator('SAR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('SAR') ? 'text-[#2962ff]' : 'text-white'}`}>SAR - Parabolic SAR</button>
-                                <button onClick={() => toggleIndicator('ICHIMOKU')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ICHIMOKU') ? 'text-[#2962ff]' : 'text-white'}`}>ICHIMOKU - Ichimoku Cloud</button>
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    Trend
+                                </div>
+                                <button
+                                    onClick={() => toggleIndicator('MA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('MA')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    MA - Moving Average
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('EMA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('EMA')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    EMA - Exponential MA
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('SMA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('SMA')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    SMA - Smoothed MA
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('WMA')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('WMA')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    WMA - Weighted MA
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('BBI')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('BBI')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    BBI - Bull Bear Index
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('BOLL')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('BOLL')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    BOLL - Bollinger Bands
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('SAR')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('SAR')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    SAR - Parabolic SAR
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        toggleIndicator('ICHIMOKU')
+                                    }
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('ICHIMOKU')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    ICHIMOKU - Ichimoku Cloud
+                                </button>
 
                                 <div className="border-t border-[#2a2e39] my-1"></div>
 
                                 {/* Momentum Indicators */}
-                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Momentum</div>
-                                <button onClick={() => toggleIndicator('MACD')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('MACD') ? 'text-[#2962ff]' : 'text-white'}`}>MACD</button>
-                                <button onClick={() => toggleIndicator('KDJ')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('KDJ') ? 'text-[#2962ff]' : 'text-white'}`}>KDJ - Stochastic</button>
-                                <button onClick={() => toggleIndicator('RSI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('RSI') ? 'text-[#2962ff]' : 'text-white'}`}>RSI</button>
-                                <button onClick={() => toggleIndicator('WR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('WR') ? 'text-[#2962ff]' : 'text-white'}`}>WR - Williams %R</button>
-                                <button onClick={() => toggleIndicator('ROC')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ROC') ? 'text-[#2962ff]' : 'text-white'}`}>ROC - Rate of Change</button>
-                                <button onClick={() => toggleIndicator('CCI')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('CCI') ? 'text-[#2962ff]' : 'text-white'}`}>CCI - Commodity Channel</button>
-                                <button onClick={() => toggleIndicator('TRIX')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('TRIX') ? 'text-[#2962ff]' : 'text-white'}`}>TRIX - Triple EMA</button>
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    Momentum
+                                </div>
+                                <button
+                                    onClick={() => toggleIndicator('MACD')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('MACD')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    MACD
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('KDJ')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('KDJ')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    KDJ - Stochastic
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('RSI')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('RSI')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    RSI
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('WR')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('WR')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    WR - Williams %R
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('ROC')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('ROC')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    ROC - Rate of Change
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('CCI')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('CCI')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    CCI - Commodity Channel
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('TRIX')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('TRIX')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    TRIX - Triple EMA
+                                </button>
 
                                 <div className="border-t border-[#2a2e39] my-1"></div>
 
                                 {/* Volume Indicators */}
-                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Volume</div>
-                                <button onClick={() => toggleIndicator('VOL')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VOL') ? 'text-[#2962ff]' : 'text-white'}`}>VOL - Volume</button>
-                                <button onClick={() => toggleIndicator('OBV')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('OBV') ? 'text-[#2962ff]' : 'text-white'}`}>OBV - On-Balance Volume</button>
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    Volume
+                                </div>
+                                <button
+                                    onClick={() => toggleIndicator('VOL')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('VOL')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    VOL - Volume
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('OBV')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('OBV')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    OBV - On-Balance Volume
+                                </button>
 
                                 <div className="border-t border-[#2a2e39] my-1"></div>
 
                                 {/* Volatility Indicators */}
-                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Volatility</div>
-                                <button onClick={() => toggleIndicator('ATR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('ATR') ? 'text-[#2962ff]' : 'text-white'}`}>ATR - Average True Range</button>
-                                <button onClick={() => toggleIndicator('BIAS')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BIAS') ? 'text-[#2962ff]' : 'text-white'}`}>BIAS - Price Deviation</button>
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    Volatility
+                                </div>
+                                <button
+                                    onClick={() => toggleIndicator('ATR')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('ATR')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    ATR - Average True Range
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('BIAS')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('BIAS')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    BIAS - Price Deviation
+                                </button>
 
                                 <div className="border-t border-[#2a2e39] my-1"></div>
 
                                 {/* Market Strength */}
-                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Market Strength</div>
-                                <button onClick={() => toggleIndicator('BRAR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('BRAR') ? 'text-[#2962ff]' : 'text-white'}`}>BRAR - Buy/Sell Power</button>
-                                <button onClick={() => toggleIndicator('VR')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('VR') ? 'text-[#2962ff]' : 'text-white'}`}>VR - Volume Ratio</button>
-                                <button onClick={() => toggleIndicator('PSY')} className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes('PSY') ? 'text-[#2962ff]' : 'text-white'}`}>PSY - Psychological Line</button>
+                                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                    Market Strength
+                                </div>
+                                <button
+                                    onClick={() => toggleIndicator('BRAR')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('BRAR')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    BRAR - Buy/Sell Power
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('VR')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('VR')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    VR - Volume Ratio
+                                </button>
+                                <button
+                                    onClick={() => toggleIndicator('PSY')}
+                                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
+                                        activeIndicators.includes('PSY')
+                                            ? 'text-[#2962ff]'
+                                            : 'text-white'
+                                    }`}
+                                >
+                                    PSY - Psychological Line
+                                </button>
                             </div>
                         )}
                     </div>
 
-                    {/* Undo/Redo */}
+                    {/* Undo/Redo (UI only currently) */}
                     <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
                         <Undo className="w-4 h-4" />
                     </button>
@@ -654,16 +1026,41 @@ function KlineChartComponent({ data, symbol, showVolume = false, height = 600, o
 
                     {/* Screenshot */}
                     <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                            />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
                         </svg>
                     </button>
 
                     {/* Expand */}
                     <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
                         </svg>
                     </button>
                 </div>
