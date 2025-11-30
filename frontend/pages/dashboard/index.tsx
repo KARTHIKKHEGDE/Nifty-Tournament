@@ -203,6 +203,38 @@ export default function DashboardHome() {
         await fetchCandles(symbol, currentTimeframe);
     };
 
+    // Handle option selection (for chart button)
+    const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART') => {
+        if (action === 'CHART') {
+            // Open chart in new window with option data
+            const params = new URLSearchParams({
+                symbol: option.symbol,
+                instrument_token: option.instrument_token?.toString() || '',
+                strike: option.strike_price.toString(),
+                ltp: option.ltp.toString(),
+                type: option.option_type,
+                oi: option.open_interest.toString(),
+                volume: option.volume.toString(),
+                change: option.change_percent.toString(),
+            });
+
+            const url = `/dashboard/chart?${params.toString()}`;
+            console.log('📊 [Dashboard] Opening chart window:', url);
+
+            const newWindow = window.open(url, '_blank', 'width=1400,height=900');
+
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.warn('⚠️ [Dashboard] Popup blocked! Opening in same tab instead');
+                window.location.href = url;
+            } else {
+                console.log('✅ [Dashboard] Chart window opened successfully');
+            }
+            return;
+        }
+        // For BUY/SELL actions, you can add logic here if needed
+        console.log('🔵 [Dashboard] Option selected:', { action, symbol: option.symbol });
+    };
+
     // Effect to fetch options chain when tab changes to OPTION_CHAIN
     useEffect(() => {
         if (activeTab === 'OPTION_CHAIN' && selectedSymbol) {
@@ -307,6 +339,7 @@ export default function DashboardHome() {
                                             spotPrice={optionsData.spotPrice}
                                             calls={optionsData.calls}
                                             puts={optionsData.puts}
+                                            onOptionSelect={handleOptionSelect}
                                         />
                                     </div>
                                 )}

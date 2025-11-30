@@ -218,7 +218,17 @@ export default function OptionsPage() {
             });
 
             const url = `/dashboard/chart?${params.toString()}`;
-            window.open(url, '_blank', 'width=1400,height=900');
+            console.log('📊 Opening chart window:', url);
+            console.log('📊 Option data:', option);
+
+            const newWindow = window.open(url, '_blank', 'width=1400,height=900');
+
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.warn('⚠️ Popup blocked! Opening in same tab instead');
+                window.location.href = url;
+            } else {
+                console.log('✅ Chart window opened successfully');
+            }
             return;
         }
 
