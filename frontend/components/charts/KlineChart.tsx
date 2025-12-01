@@ -680,11 +680,10 @@ function KlineChartComponent({
         {/* Cursor */}
         <button
           onClick={() => handleToolClick('cursor')}
-          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
-            activeTool === 'cursor'
+          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'cursor'
               ? 'bg-[#2a2e39] text-white'
               : 'text-[#787b86] hover:bg-[#1e222d]'
-          }`}
+            }`}
           title="Cursor"
         >
           <MousePointer2 className="w-4 h-4" />
@@ -693,11 +692,10 @@ function KlineChartComponent({
         {/* Simple line segment */}
         <button
           onClick={() => handleToolClick('line')}
-          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
-            activeTool === 'line'
+          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'line'
               ? 'bg-[#2a2e39] text-white'
               : 'text-[#787b86] hover:bg-[#1e222d]'
-          }`}
+            }`}
           title="Trend Line"
         >
           <svg
@@ -718,13 +716,12 @@ function KlineChartComponent({
         <div className="relative">
           <button
             onClick={() => setShowBrushMenu((prev) => !prev)}
-            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
-              activeTool === 'brush' ||
-              activeTool === 'rect' ||
-              activeTool === 'rotRect'
+            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'brush' ||
+                activeTool === 'rect' ||
+                activeTool === 'rotRect'
                 ? 'bg-[#2a2e39] text-white'
                 : 'text-[#787b86] hover:bg-[#1e222d]'
-            }`}
+              }`}
             title="Drawing Tools"
           >
             {/* Icon: small brush-like squiggle */}
@@ -766,7 +763,7 @@ function KlineChartComponent({
 
         {/* Horizontal levels placeholder (you can later map to horizontalStraightLine overlay) */}
         <button
-          onClick={() => {}}
+          onClick={() => { }}
           className="w-9 h-9 flex items-center justify-center rounded transition-colors text-[#787b86] hover:bg-[#1e222d]"
           title="Levels (future)"
         >
@@ -775,7 +772,7 @@ function KlineChartComponent({
 
         {/* Text tool - you can later hook to custom text overlay */}
         <button
-          onClick={() => {}}
+          onClick={() => { }}
           className="w-9 h-9 flex items-center justify-center rounded transition-colors text-[#787b86] hover:bg-[#1e222d]"
           title="Text (future)"
         >
@@ -821,11 +818,10 @@ function KlineChartComponent({
                           onTimeframeChange(tf);
                         }
                       }}
-                      className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                        selectedTimeframe === tf
+                      className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf
                           ? 'text-[#2962ff] bg-[#2a2e39]'
                           : 'text-white'
-                      }`}
+                        }`}
                     >
                       {tf}
                     </button>
@@ -869,11 +865,10 @@ function KlineChartComponent({
                   <button
                     key={key}
                     onClick={() => toggleIndicator(key)}
-                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                      activeIndicators.includes(key)
+                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
                         ? 'text-[#2962ff]'
                         : 'text-white'
-                    }`}
+                      }`}
                   >
                     {label}
                   </button>
@@ -897,11 +892,10 @@ function KlineChartComponent({
                   <button
                     key={key}
                     onClick={() => toggleIndicator(key)}
-                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                      activeIndicators.includes(key)
+                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
                         ? 'text-[#2962ff]'
                         : 'text-white'
-                    }`}
+                      }`}
                   >
                     {key}
                   </button>
@@ -917,11 +911,10 @@ function KlineChartComponent({
                   <button
                     key={key}
                     onClick={() => toggleIndicator(key)}
-                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                      activeIndicators.includes(key)
+                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
                         ? 'text-[#2962ff]'
                         : 'text-white'
-                    }`}
+                      }`}
                   >
                     {key}
                   </button>
@@ -937,11 +930,10 @@ function KlineChartComponent({
                   <button
                     key={key}
                     onClick={() => toggleIndicator(key)}
-                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                      activeIndicators.includes(key)
+                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
                         ? 'text-[#2962ff]'
                         : 'text-white'
-                    }`}
+                      }`}
                   >
                     {key}
                   </button>
@@ -957,11 +949,10 @@ function KlineChartComponent({
                   <button
                     key={key}
                     onClick={() => toggleIndicator(key)}
-                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${
-                      activeIndicators.includes(key)
+                    className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
                         ? 'text-[#2962ff]'
                         : 'text-white'
-                    }`}
+                      }`}
                   >
                     {key}
                   </button>
@@ -1017,13 +1008,75 @@ function KlineChartComponent({
       </div>
 
       {/* Chart Area */}
-      <div className="absolute top-12 left-12 right-0 bottom-0">
+      <div className="absolute top-12 left-12 right-0 bottom-8">
         <div ref={chartRef} className="w-full h-full" />
       </div>
 
-      {/* Bottom Time Info (static for now) */}
-      <div className="absolute bottom-2 right-4 text-[#787b86] text-xs z-10">
-        21:42:39 (UTC+5:30)
+      {/* Bottom Timeframe Bar (TradingView Style) */}
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-[#131722] border-t border-[#2a2e39] flex items-center justify-between px-3 z-10">
+        {/* Left: Timeframe Buttons */}
+        <div className="flex items-center gap-1">
+          {[
+            { label: '1d', value: '1m' },
+            { label: '5d', value: '5m' },
+            { label: '1m', value: '15m' },
+            { label: '3m', value: '30m' },
+            { label: '6m', value: '1h' },
+            { label: '1y', value: '1d' },
+            { label: '5y', value: '1w' },
+            { label: 'All', value: 'all' },
+          ].map((tf) => (
+            <button
+              key={tf.value}
+              onClick={() => {
+                setSelectedTimeframe(tf.value);
+                onTimeframeChange?.(tf.value);
+              }}
+              className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${selectedTimeframe === tf.value
+                  ? 'bg-[#2962ff] text-white'
+                  : 'text-[#787b86] hover:text-white hover:bg-[#1e222d]'
+                }`}
+            >
+              {tf.label}
+            </button>
+          ))}
+
+          {/* Zoom Reset Button */}
+          <button className="ml-2 w-5 h-5 flex items-center justify-center rounded text-[#787b86] hover:text-white hover:bg-[#1e222d] transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Right: Time Display, % / log / auto */}
+        <div className="flex items-center gap-4">
+          {/* Current Time */}
+          <div className="text-[#787b86] text-[11px] font-medium">
+            {new Date().toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })} UTC+5:30
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-[#2a2e39]" />
+
+          {/* % / log / auto Toggle */}
+          <div className="flex items-center gap-1">
+            <button className="px-2 py-0.5 text-[11px] font-medium text-[#787b86] hover:text-white transition-colors">
+              %
+            </button>
+            <button className="px-2 py-0.5 text-[11px] font-medium text-[#787b86] hover:text-white transition-colors">
+              log
+            </button>
+            <button className="px-2 py-0.5 text-[11px] font-medium text-[#2962ff] transition-colors">
+              auto
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
