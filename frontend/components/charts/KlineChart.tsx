@@ -15,7 +15,7 @@ import {
   Activity,
   Square,
 } from 'lucide-react';
-import { registerCustomOverlays } from '../../Klineutils/klineOverlays';
+import { registerCustomOverlays } from '../../utils/klineOverlays';
 
 interface KlineChartProps {
   data: CandleData[];
