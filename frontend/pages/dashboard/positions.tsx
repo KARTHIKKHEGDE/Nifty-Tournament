@@ -109,8 +109,8 @@ export default function PositionsPage() {
                                                 <td className="px-6 py-4 text-sm text-right">
                                                     <span
                                                         className={`font-medium ${position.quantity > 0
-                                                                ? 'text-blue-400'
-                                                                : 'text-red-400'
+                                                            ? 'text-blue-400'
+                                                            : 'text-red-400'
                                                             }`}
                                                     >
                                                         {position.quantity > 0 ? '+' : ''}
@@ -127,8 +127,8 @@ export default function PositionsPage() {
                                                     <div className="flex flex-col items-end">
                                                         <span
                                                             className={`font-bold ${unrealizedPnL >= 0
-                                                                    ? 'text-green-500'
-                                                                    : 'text-red-500'
+                                                                ? 'text-green-500'
+                                                                : 'text-red-500'
                                                                 }`}
                                                         >
                                                             {formatCurrency(unrealizedPnL)}
@@ -144,8 +144,8 @@ export default function PositionsPage() {
                                                         )}
                                                         <span
                                                             className={`font-medium ${dayChangePercent >= 0
-                                                                    ? 'text-green-500'
-                                                                    : 'text-red-500'
+                                                                ? 'text-green-500'
+                                                                : 'text-red-500'
                                                                 }`}
                                                         >
                                                             {dayChangePercent >= 0 ? '+' : ''}
@@ -190,7 +190,7 @@ export default function PositionsPage() {
                                 You don't have any open positions at the moment
                             </p>
                             <button
-                                onClick={() => window.location.href = '/dashboard/options'}
+                                onClick={() => window.location.href = '/dashboard'}
                                 className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                             >
                                 Start Trading

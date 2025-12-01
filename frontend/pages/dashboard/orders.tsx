@@ -111,8 +111,8 @@ export default function OrdersPage() {
                                             <td className="px-6 py-4">
                                                 <span
                                                     className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${order.side === 'BUY'
-                                                            ? 'bg-blue-900/30 text-blue-400'
-                                                            : 'bg-red-900/30 text-red-400'
+                                                        ? 'bg-blue-900/30 text-blue-400'
+                                                        : 'bg-red-900/30 text-red-400'
                                                         }`}
                                                 >
                                                     {order.side}
@@ -130,12 +130,12 @@ export default function OrdersPage() {
                                             <td className="px-6 py-4">
                                                 <span
                                                     className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${order.status === 'COMPLETE' || order.status === 'FILLED'
-                                                            ? 'bg-green-900/30 text-green-400'
-                                                            : order.status === 'PENDING' || order.status === 'OPEN'
-                                                                ? 'bg-yellow-900/30 text-yellow-400'
-                                                                : order.status === 'CANCELLED'
-                                                                    ? 'bg-gray-700 text-gray-400'
-                                                                    : 'bg-red-900/30 text-red-400'
+                                                        ? 'bg-green-900/30 text-green-400'
+                                                        : order.status === 'PENDING' || order.status === 'OPEN'
+                                                            ? 'bg-yellow-900/30 text-yellow-400'
+                                                            : order.status === 'CANCELLED'
+                                                                ? 'bg-gray-700 text-gray-400'
+                                                                : 'bg-red-900/30 text-red-400'
                                                         }`}
                                                 >
                                                     {order.status}
@@ -185,7 +185,7 @@ export default function OrdersPage() {
                                     : `No ${filter.toLowerCase()} orders found`}
                             </p>
                             <button
-                                onClick={() => window.location.href = '/dashboard/options'}
+                                onClick={() => window.location.href = '/dashboard'}
                                 className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                             >
                                 Start Trading
@@ -217,8 +217,8 @@ export default function OrdersPage() {
                             <p className="text-xs text-gray-400 mb-1">Total P&L</p>
                             <p
                                 className={`text-2xl font-bold ${filteredOrders.reduce((sum, o) => sum + (o.pnl || 0), 0) >= 0
-                                        ? 'text-green-500'
-                                        : 'text-red-500'
+                                    ? 'text-green-500'
+                                    : 'text-red-500'
                                     }`}
                             >
                                 {formatCurrency(filteredOrders.reduce((sum, o) => sum + (o.pnl || 0), 0))}

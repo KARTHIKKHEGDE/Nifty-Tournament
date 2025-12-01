@@ -5,123 +5,26 @@ import KlineChart from '../../components/charts/KlineChart';
 import OrderPanel from '../../components/trading/OrderPanel';
 import Card from '../../components/common/Card';
 import Loader from '../../components/common/Loader';
-import { OptionData, CandleData, OrderSide } from '../../types';
+import { OptionData, OrderSide } from '../../types';
 import { formatDate } from '../../utils/formatters';
 import api from '../../services/api';
+import { useChartData } from '../../hooks/useChartData';
+import { useOptionsChain } from '../../hooks/useOptionsChain';
 
 export default function OptionsPage() {
-    const [spotPrice, setSpotPrice] = useState(0);
+    // Use hooks
+    const { candles, fetchCandles } = useChartData();
+    const { optionsData, isLoading, fetchOptionsChain } = useOptionsChain();
+
+    // Local state
     const [selectedExpiry, setSelectedExpiry] = useState('');
     const [selectedOption, setSelectedOption] = useState<OptionData | null>(null);
     const [initialOrderSide, setInitialOrderSide] = useState<OrderSide>(OrderSide.BUY);
-    const [candles, setCandles] = useState<CandleData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [expiryDates, setExpiryDates] = useState<string[]>([]);
-    const [optionsData, setOptionsData] = useState<{ calls: OptionData[]; puts: OptionData[] }>({
-        calls: [],
-        puts: [],
-    });
 
-    // Fetch options chain data from API
-    const fetchOptionsChain = async (expiry?: string) => {
-        setIsLoading(true);
-        try {
-            const expiryParam = expiry ? `?expiry_date=${expiry}` : '';
-            const response = await api.get(`/api/candles/options-chain/NIFTY${expiryParam}`);
-            const data = response.data;
-
-            // Update spot price
-            if (data.spot_price) {
-                setSpotPrice(data.spot_price);
-            }
-
-            // Get all unique strikes and sort them
-            const allStrikes = new Set<number>();
-            data.ce_options?.forEach((opt: any) => allStrikes.add(opt.strike));
-            data.pe_options?.forEach((opt: any) => allStrikes.add(opt.strike));
-            const sortedStrikes = Array.from(allStrikes).sort((a, b) => a - b);
-
-            // Find ATM strike index (closest to spot price)
-            let atmIndex = 0;
-            let minDiff = Number.MAX_VALUE;
-
-            sortedStrikes.forEach((strike, index) => {
-                const diff = Math.abs(strike - data.spot_price);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    atmIndex = index;
-                }
-            });
-
-            // Filter strikes (8 above and 8 below ATM)
-            const startIdx = Math.max(0, atmIndex - 8);
-            const endIdx = Math.min(sortedStrikes.length, atmIndex + 9);
-            const allowedStrikes = new Set(sortedStrikes.slice(startIdx, endIdx));
-
-            console.log(`Spot: ${data.spot_price}, ATM: ${sortedStrikes[atmIndex]}, Range: ${startIdx}-${endIdx}`);
-
-            // Transform and filter API data
-            const calls: OptionData[] = data.ce_options
-                .filter((opt: any) => allowedStrikes.has(opt.strike))
-                .map((opt: any) => ({
-                    symbol: opt.tradingsymbol,
-                    strike_price: opt.strike,
-                    expiry_date: opt.expiry,
-                    option_type: 'CE',
-                    ltp: opt.ltp,
-                    open_interest: opt.oi,
-                    change_percent: opt.change,
-                    volume: opt.volume,
-                    bid: 0,
-                    ask: 0,
-                    iv: 0,
-                    delta: 0,
-                    gamma: 0,
-                    theta: 0,
-                    vega: 0,
-                    instrument_token: opt.instrument_token,
-                }));
-
-            const puts: OptionData[] = data.pe_options
-                .filter((opt: any) => allowedStrikes.has(opt.strike))
-                .map((opt: any) => ({
-                    symbol: opt.tradingsymbol,
-                    strike_price: opt.strike,
-                    expiry_date: opt.expiry,
-                    option_type: 'PE',
-                    ltp: opt.ltp,
-                    open_interest: opt.oi,
-                    change_percent: opt.change,
-                    volume: opt.volume,
-                    bid: 0,
-                    ask: 0,
-                    iv: 0,
-                    delta: 0,
-                    gamma: 0,
-                    theta: 0,
-                    vega: 0,
-                    instrument_token: opt.instrument_token,
-                }));
-
-            setOptionsData({ calls, puts });
-        } catch (error) {
-            console.error('Error fetching options chain:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Fetch candle data for selected option
+    // Fetch candle data for selected option (now using hook)
     const fetchCandleData = async (instrumentToken: number, symbol: string) => {
-        try {
-            const response = await api.get(
-                `/api/candles/?symbol=${symbol}&instrument_token=${instrumentToken}&timeframe=5minute&limit=400`
-            );
-            setCandles(response.data);
-        } catch (error) {
-            console.error('Error fetching candle data:', error);
-            setCandles([]);
-        }
+        await fetchCandles(symbol, instrumentToken, '5minute', 200);
     };
 
     // Fetch expiry dates on mount
@@ -199,9 +102,9 @@ export default function OptionsPage() {
     // Fetch options chain when expiry changes
     useEffect(() => {
         if (selectedExpiry) {
-            fetchOptionsChain(selectedExpiry);
+            fetchOptionsChain('NIFTY', selectedExpiry, { above: 8, below: 8 });
         }
-    }, [selectedExpiry]);
+    }, [selectedExpiry, fetchOptionsChain]);
 
     const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART') => {
         if (action === 'CHART') {
@@ -285,7 +188,7 @@ export default function OptionsPage() {
                     </div>
                 ) : (
                     <OptionsChain
-                        spotPrice={spotPrice}
+                        spotPrice={optionsData.spotPrice}
                         calls={optionsData.calls}
                         puts={optionsData.puts}
                         onOptionSelect={handleOptionSelect}

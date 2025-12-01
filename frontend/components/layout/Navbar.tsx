@@ -26,7 +26,6 @@ export default function ZerodhaNavbar() {
 
     const navLinks = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'Options', href: '/dashboard/options', icon: BarChart2 },
         { name: 'Orders', href: '/dashboard/orders', icon: List },
         { name: 'Positions', href: '/dashboard/positions', icon: PieChart },
         { name: 'Tournaments', href: '/dashboard/tournaments', icon: Trophy },
@@ -48,16 +47,15 @@ export default function ZerodhaNavbar() {
                 {/* Center: Navigation Links */}
                 <div className="flex items-center gap-1">
                     {navLinks.map((link) => {
-                        const isActive = router.pathname === link.href ||
-                            (link.href === '/dashboard' && router.pathname === '/dashboard/nifty');
+                        const isActive = router.pathname === link.href;
                         const Icon = link.icon;
                         return (
                             <Link
                                 key={link.name}
                                 href={link.href}
                                 className={`px-4 py-2 text-sm font-medium rounded transition-colors flex items-center gap-2 ${isActive
-                                        ? 'text-blue-400 bg-blue-900/20'
-                                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                    ? 'text-blue-400 bg-blue-900/20'
+                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />

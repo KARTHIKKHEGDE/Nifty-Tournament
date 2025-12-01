@@ -30,7 +30,7 @@ export default function Home() {
     useEffect(() => {
         setMounted(true);
         if (isAuthenticated) {
-            router.push('/dashboard/nifty');
+            router.push('/dashboard');
         }
     }, [isAuthenticated, router]);
 

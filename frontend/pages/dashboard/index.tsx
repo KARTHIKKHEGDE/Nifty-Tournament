@@ -9,8 +9,9 @@ import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
 import KlineChart from '../../components/charts/KlineChart';
 import OptionsChain from '../../components/options/OptionsChain';
 import { formatCurrency } from '../../utils/formatters';
-import api from '../../services/api';
 import { OptionData } from '../../types';
+import { useChartData } from '../../hooks/useChartData';
+import { useOptionsChain } from '../../hooks/useOptionsChain';
 
 export default function DashboardHome() {
     const router = useRouter();
@@ -19,16 +20,12 @@ export default function DashboardHome() {
     const { orders } = useTradingStore();
     const { selectedSymbol, setSelectedSymbol, setShowChart, showChart } = useSymbolStore();
 
+    // Use hooks
+    const { candles, isLoading: isLoadingChart, fetchCandles, setCandles } = useChartData();
+    const { optionsData, isLoading: isLoadingOptions, fetchOptionsChain } = useOptionsChain();
+
     // State
-    const [candles, setCandles] = useState<any[]>([]);
-    const [isLoadingChart, setIsLoadingChart] = useState(false);
     const [activeTab, setActiveTab] = useState<'CHART' | 'OPTION_CHAIN'>('CHART');
-    const [optionsData, setOptionsData] = useState<{ calls: OptionData[]; puts: OptionData[]; spotPrice: number }>({
-        calls: [],
-        puts: [],
-        spotPrice: 0
-    });
-    const [isLoadingOptions, setIsLoadingOptions] = useState(false);
     const [currentTimeframe, setCurrentTimeframe] = useState('5m');
 
     // Debug: Component mount
@@ -55,152 +52,32 @@ export default function DashboardHome() {
         return mapped;
     };
 
-    const fetchOptionsChain = async (symbol: string) => {
-        setIsLoadingOptions(true);
-        try {
-            // Map symbol names if necessary (e.g., "NIFTY 50" -> "NIFTY")
-            let apiSymbol = symbol;
-            if (symbol === 'NIFTY 50') apiSymbol = 'NIFTY';
-            if (symbol === 'NIFTY BANK') apiSymbol = 'BANKNIFTY';
-
-            const response = await api.get(`/api/candles/options-chain/${apiSymbol}`);
-            const data = response.data;
-
-            // Process data similar to OptionsPage
-            const allStrikes = new Set<number>();
-            data.ce_options?.forEach((opt: any) => allStrikes.add(opt.strike));
-            data.pe_options?.forEach((opt: any) => allStrikes.add(opt.strike));
-            const sortedStrikes = Array.from(allStrikes).sort((a, b) => a - b);
-
-            // Find ATM strike index
-            let atmIndex = 0;
-            let minDiff = Number.MAX_VALUE;
-            sortedStrikes.forEach((strike, index) => {
-                const diff = Math.abs(strike - data.spot_price);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    atmIndex = index;
-                }
-            });
-
-            // Filter strikes (15 above and 15 below ATM for dashboard view)
-            const startIdx = Math.max(0, atmIndex - 15);
-            const endIdx = Math.min(sortedStrikes.length, atmIndex + 16);
-            const allowedStrikes = new Set(sortedStrikes.slice(startIdx, endIdx));
-
-            const mapOption = (opt: any, type: 'CE' | 'PE'): OptionData => ({
-                symbol: opt.tradingsymbol,
-                strike_price: opt.strike,
-                expiry_date: opt.expiry,
-                option_type: type,
-                ltp: opt.ltp,
-                open_interest: opt.oi,
-                change_percent: opt.change,
-                volume: opt.volume,
-                bid: 0, ask: 0, iv: 0, delta: 0, gamma: 0, theta: 0, vega: 0,
-                instrument_token: opt.instrument_token,
-            });
-
-            const calls = data.ce_options
-                .filter((opt: any) => allowedStrikes.has(opt.strike))
-                .map((opt: any) => mapOption(opt, 'CE'));
-
-            const puts = data.pe_options
-                .filter((opt: any) => allowedStrikes.has(opt.strike))
-                .map((opt: any) => mapOption(opt, 'PE'));
-
-            setOptionsData({ calls, puts, spotPrice: data.spot_price });
-        } catch (error) {
-            console.error('Error fetching options chain:', error);
-        } finally {
-            setIsLoadingOptions(false);
-        }
-    };
-
-    const fetchCandles = async (symbol: WatchlistSymbol, timeframe: string) => {
-        console.log('🔵 [fetchCandles] START - Symbol:', symbol.symbol, 'Timeframe:', timeframe);
-        console.log('🔵 [fetchCandles] Symbol object:', JSON.stringify(symbol, null, 2));
+    const handleSymbolChartFetch = async (symbol: WatchlistSymbol, timeframe: string) => {
+        console.log('🔵 [handleSymbolChartFetch] Symbol:', symbol.symbol, 'Timeframe:', timeframe);
 
         if (!symbol.instrumentToken) {
-            console.error('❌ [fetchCandles] No instrument token found for symbol:', symbol.symbol);
+            console.error('❌ No instrument token found for symbol:', symbol.symbol);
             return;
         }
 
-        console.log('🔵 [fetchCandles] Instrument token:', symbol.instrumentToken);
-        setIsLoadingChart(true);
-
-        try {
-            const backendTimeframe = mapTimeframeToBackend(timeframe);
-            const params = {
-                symbol: symbol.symbol,
-                instrument_token: symbol.instrumentToken,
-                timeframe: backendTimeframe,
-                limit: 200
-            };
-
-            console.log('🔵 [fetchCandles] API Request params:', params);
-            console.log('🔵 [fetchCandles] Making API call to /api/candles/');
-
-            const response = await api.get('/api/candles/', { params });
-
-            console.log('✅ [fetchCandles] API Response received');
-            console.log('✅ [fetchCandles] Response status:', response.status);
-            console.log('✅ [fetchCandles] Response data length:', response.data?.length);
-            console.log('✅ [fetchCandles] First 3 candles:', response.data?.slice(0, 3));
-
-            setCandles(response.data);
-            console.log('✅ [fetchCandles] Candles state updated successfully');
-        } catch (error: any) {
-            console.error('❌ [fetchCandles] Error occurred:', error);
-            console.error('❌ [fetchCandles] Error message:', error.message);
-            console.error('❌ [fetchCandles] Error response:', error.response?.data);
-            console.error('❌ [fetchCandles] Error status:', error.response?.status);
-
-            // Use mock data as fallback
-            const mockCandles = [
-                {
-                    timestamp: Date.now() - 3600000,
-                    open: symbol.ltp * 0.98,
-                    high: symbol.ltp * 1.02,
-                    low: symbol.ltp * 0.96,
-                    close: symbol.ltp,
-                    volume: 1000000,
-                },
-            ];
-
-            console.log('⚠️ [fetchCandles] Using mock data as fallback:', mockCandles);
-            setCandles(mockCandles);
-        } finally {
-            setIsLoadingChart(false);
-            console.log('🔵 [fetchCandles] END - Loading state set to false');
-        }
+        const backendTimeframe = mapTimeframeToBackend(timeframe);
+        await fetchCandles(symbol.symbol, symbol.instrumentToken, backendTimeframe, 200);
     };
 
     const handleTimeframeChange = (timeframe: string) => {
         console.log('🟢 [handleTimeframeChange] Timeframe changed to:', timeframe);
-        console.log('🟢 [handleTimeframeChange] Current selected symbol:', selectedSymbol?.symbol);
-
         setCurrentTimeframe(timeframe);
         if (selectedSymbol) {
-            console.log('🟢 [handleTimeframeChange] Calling fetchCandles...');
-            fetchCandles(selectedSymbol, timeframe);
-        } else {
-            console.warn('⚠️ [handleTimeframeChange] No symbol selected, skipping fetch');
+            handleSymbolChartFetch(selectedSymbol, timeframe);
         }
     };
 
     const handleSymbolSelect = async (symbol: WatchlistSymbol) => {
         console.log('🟣 [handleSymbolSelect] Symbol selected:', symbol.symbol);
-        console.log('🟣 [handleSymbolSelect] Symbol details:', JSON.stringify(symbol, null, 2));
-        console.log('🟣 [handleSymbolSelect] Current timeframe:', currentTimeframe);
-
         setSelectedSymbol(symbol);
         setShowChart(true);
-        setActiveTab('CHART'); // Reset to chart tab
-
-        console.log('🟣 [handleSymbolSelect] Calling fetchCandles...');
-        // Fetch candle data for the selected symbol with current timeframe
-        await fetchCandles(symbol, currentTimeframe);
+        setActiveTab('CHART');
+        await handleSymbolChartFetch(symbol, currentTimeframe);
     };
 
     // Handle option selection (for chart button)
@@ -238,9 +115,9 @@ export default function DashboardHome() {
     // Effect to fetch options chain when tab changes to OPTION_CHAIN
     useEffect(() => {
         if (activeTab === 'OPTION_CHAIN' && selectedSymbol) {
-            fetchOptionsChain(selectedSymbol.displayName);
+            fetchOptionsChain(selectedSymbol.displayName, undefined, { above: 15, below: 15 });
         }
-    }, [activeTab, selectedSymbol]);
+    }, [activeTab, selectedSymbol, fetchOptionsChain]);
 
     // Debug effect to monitor candles state
     useEffect(() => {
@@ -535,7 +412,7 @@ export default function DashboardHome() {
                             <div className="text-center py-12">
                                 <p className="text-gray-400">No recent orders</p>
                                 <button
-                                    onClick={() => router.push('/dashboard/options')}
+                                    onClick={() => router.push('/dashboard')}
                                     className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
                                 >
                                     Start Trading

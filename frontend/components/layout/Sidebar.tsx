@@ -25,16 +25,6 @@ const navItems: NavItem[] = [
         icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
-        name: 'NIFTY Trading',
-        href: '/dashboard/nifty',
-        icon: <TrendingUp className="w-5 h-5" />,
-    },
-    {
-        name: 'Options Chain',
-        href: '/dashboard/options',
-        icon: <Briefcase className="w-5 h-5" />,
-    },
-    {
         name: 'Tournaments',
         href: '/dashboard/tournaments',
         icon: <Trophy className="w-5 h-5" />,
@@ -77,8 +67,8 @@ export default function Sidebar() {
                         key={item.href}
                         href={item.href}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive(item.href)
-                                ? 'bg-blue-600 text-white shadow-lg'
-                                : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-gray-400 hover:bg-gray-700 hover:text-white'
                             }`}
                     >
                         {item.icon}

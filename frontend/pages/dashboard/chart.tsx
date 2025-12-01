@@ -2,13 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import KlineChart from '../../components/charts/KlineChart';
-import api from '../../services/api';
-import { CandleData } from '../../types';
+import { useChartData } from '../../hooks/useChartData';
 
 export default function ChartPage() {
     const router = useRouter();
-    const [candles, setCandles] = useState<CandleData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { candles, isLoading, fetchCandles } = useChartData();
     const [symbol, setSymbol] = useState('');
     const [windowHeight, setWindowHeight] = useState(600);
 
@@ -22,45 +20,28 @@ export default function ChartPage() {
     useEffect(() => {
         if (!router.isReady) return;
 
-        const { symbol, instrument_token, type, strike } = router.query;
+        const { symbol, instrument_token } = router.query;
 
         if (symbol) {
             setSymbol(symbol as string);
         }
 
-        const fetchCandles = async () => {
-            if (!instrument_token) return;
+        if (instrument_token && symbol) {
+            const token = parseInt(instrument_token as string);
+            const symbolStr = symbol as string;
 
-            try {
-                const response = await api.get('/api/candles/', {
-                    params: {
-                        symbol: symbol,
-                        instrument_token: instrument_token,
-                        timeframe: '5minute',
-                        limit: 400
-                    }
-                });
-                setCandles(response.data);
-            } catch (error) {
-                console.error('Error fetching candle data:', error);
-                // Fallback mock data
-                setCandles([
-                    {
-                        timestamp: Date.now() - 3600000,
-                        open: 100,
-                        high: 105,
-                        low: 95,
-                        close: 102,
-                        volume: 1000,
-                    }
-                ]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            // Initial fetch
+            fetchCandles(symbolStr, token, '5minute', 200);
 
-        fetchCandles();
-    }, [router.isReady, router.query]);
+            // Auto-refresh every 30 seconds
+            const refreshInterval = setInterval(() => {
+                console.log('🔄 Auto-refreshing candle data...');
+                fetchCandles(symbolStr, token, '5minute', 200);
+            }, 30000);
+
+            return () => clearInterval(refreshInterval);
+        }
+    }, [router.isReady, router.query, fetchCandles]);
 
     return (
         <>
@@ -68,7 +49,7 @@ export default function ChartPage() {
                 <title>{symbol || 'Chart'} - NIFTY Trader</title>
             </Head>
             <div className="h-screen w-screen bg-[#0a0a0a] overflow-hidden">
-                {isLoading ? (
+                {isLoading && candles.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-gray-400">Loading chart data...</div>
                     </div>
