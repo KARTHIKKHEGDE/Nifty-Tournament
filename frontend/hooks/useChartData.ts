@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import api from '../services/api';
 import { CandleData } from '../types';
 
@@ -14,7 +14,7 @@ export function useChartData(options: UseChartDataOptions = {}) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchCandles = async (
+    const fetchCandles = useCallback(async (
         symbol: string,
         instrumentToken: number,
         timeframe: string = '5minute',
@@ -49,9 +49,9 @@ export function useChartData(options: UseChartDataOptions = {}) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []); // Empty deps - function never changes
 
-    const refreshCandles = async (
+    const refreshCandles = useCallback(async (
         symbol: string,
         instrumentToken: number,
         timeframe: string = '5minute',
@@ -59,7 +59,7 @@ export function useChartData(options: UseChartDataOptions = {}) {
     ) => {
         console.log('🔄 [useChartData] Auto-refreshing candles...');
         return fetchCandles(symbol, instrumentToken, timeframe, limit);
-    };
+    }, [fetchCandles]); // Depends on fetchCandles
 
     return {
         candles,

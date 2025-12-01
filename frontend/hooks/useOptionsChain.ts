@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import api from '../services/api';
 import { OptionData } from '../types';
 
@@ -17,7 +17,7 @@ export function useOptionsChain() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchOptionsChain = async (
+    const fetchOptionsChain = useCallback(async (
         symbol: string,
         expiryDate?: string,
         strikeRange: { above: number; below: number } = { above: 10, below: 10 }
@@ -111,7 +111,7 @@ export function useOptionsChain() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []); // Empty dependency array - function never changes
 
     return {
         optionsData,
