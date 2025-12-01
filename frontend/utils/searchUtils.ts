@@ -12,7 +12,7 @@ export interface OptionQuery {
 
 export type SearchSuggestion = string | OptionQuery;
 
-const VALID_INDEXES = ['NIFTY', 'BANKNIFTY', 'SENSEX'];
+const VALID_INDEXES = ['NIFTY', 'BANKNIFTY'];
 
 export function filterIndexes(query: string): string[] {
     const normalizedQuery = query.toLowerCase().trim();
@@ -26,7 +26,6 @@ export function getIndexDisplayName(index: string): string {
     const displayNames: { [key: string]: string } = {
         'NIFTY': 'NIFTY 50',
         'BANKNIFTY': 'BANKNIFTY',
-        'SENSEX': 'SENSEX',
     };
     return displayNames[index] || index;
 }
@@ -69,8 +68,6 @@ function instrumentToOption(inst: Instrument): OptionQuery {
 }
 
 async function getSpotPrice(index: string): Promise<number> {
-    console.log(`🔍 [getSpotPrice] Called for: ${index}`);
-
     if (typeof window !== 'undefined') {
         try {
             const { useSymbolStore } = require('../stores/symbolStore');
@@ -79,32 +76,22 @@ async function getSpotPrice(index: string): Promise<number> {
             const indexMap: { [key: string]: string } = {
                 'NIFTY': 'NIFTY 50',
                 'BANKNIFTY': 'BANKNIFTY',
-                'SENSEX': 'SENSEX',
             };
 
             const displayName = indexMap[index] || index;
-            console.log(`📋 [getSpotPrice] Looking for "${displayName}" in watchlist`);
-
             const indexInWatchlist = watchlist.find((item: any) =>
                 item.symbol === displayName || item.displayName === displayName
             );
 
-            if (indexInWatchlist) {
-                console.log(`✅ [getSpotPrice] Found in watchlist, LTP: ${indexInWatchlist.ltp}`);
-                if (indexInWatchlist.ltp > 0) {
-                    return indexInWatchlist.ltp;
-                }
-            } else {
-                console.log(`⚠️ [getSpotPrice] Not found in watchlist`);
+            if (indexInWatchlist && indexInWatchlist.ltp > 0) {
+                return indexInWatchlist.ltp;
             }
 
-            console.log(`🌙 [getSpotPrice] Fetching close price from API...`);
             const api = require('../services/api').default;
 
             const instrumentTokens: { [key: string]: number } = {
                 'NIFTY': 256265,
                 'BANKNIFTY': 260105,
-                'SENSEX': 265,
             };
 
             const instrumentToken = instrumentTokens[index];
@@ -112,59 +99,48 @@ async function getSpotPrice(index: string): Promise<number> {
                 try {
                     const response = await api.get(`/api/candles/${instrumentToken}?interval=day&limit=1`);
                     if (response.data && response.data.candles && response.data.candles.length > 0) {
-                        const closePrice = response.data.candles[0].close;
-                        console.log(`✅ [getSpotPrice] Using close price: ${closePrice}`);
-                        return closePrice;
+                        return response.data.candles[0].close;
                     }
                 } catch (error) {
-                    console.error(`❌ [getSpotPrice] API failed:`, error);
+                    console.error(`Failed to fetch close price:`, error);
                 }
             }
         } catch (error) {
-            console.error('❌ [getSpotPrice] Error:', error);
+            console.error('Error in getSpotPrice:', error);
         }
     }
 
     const fallbackPrices: { [key: string]: number } = {
         'NIFTY': 24500,
         'BANKNIFTY': 51200,
-        'SENSEX': 81000,
     };
 
-    console.log(`⚠️ [getSpotPrice] Using fallback: ${fallbackPrices[index]}`);
     return fallbackPrices[index] || 0;
 }
 
 export async function getSuggestions(query: string): Promise<SearchSuggestion[]> {
     const trimmedQuery = query.trim();
-    console.log(`🔍 [getSuggestions] Query: "${trimmedQuery}"`);
 
     if (!trimmedQuery) return [];
 
     if (!instrumentCache.isReady()) {
-        console.warn('⚠️ [getSuggestions] Instrument cache not ready');
         return [];
     }
 
     if (hasIndexAndStrike(trimmedQuery)) {
         const extracted = extractIndexAndStrike(trimmedQuery);
         if (extracted) {
-            console.log(`📊 [getSuggestions] Index + Strike: ${extracted.index} ${extracted.strike}`);
             const instruments = instrumentCache.getByIndexAndStrike(extracted.index, extracted.strike, 50);
             return instruments.map(instrumentToOption);
         }
     }
 
     const matchedIndexes = filterIndexes(trimmedQuery);
-    console.log(`📋 [getSuggestions] Matched indexes:`, matchedIndexes);
-
     if (matchedIndexes.length > 0) {
         const index = matchedIndexes[0];
         const spotPrice = await getSpotPrice(index);
-        console.log(`💰 [getSuggestions] Spot price for ${index}: ${spotPrice}`);
 
         const instruments = instrumentCache.getATMStrikes(index, spotPrice, 50);
-        console.log(`📦 [getSuggestions] Found ${instruments.length} instruments`);
         return instruments.map(instrumentToOption);
     }
 

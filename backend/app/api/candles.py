@@ -284,9 +284,25 @@ async def get_instruments(
     try:
         instruments = zerodha.get_instruments(exchange)
         
+        # Filter for NIFTY and BANKNIFTY options only
+        filtered_instruments = []
+        for inst in instruments:
+            # Only include CE and PE options
+            if inst.get('instrument_type') not in ['CE', 'PE']:
+                continue
+            
+            # Only include NIFTY and BANKNIFTY
+            name = inst.get('name', '').upper()
+            if name not in ['NIFTY', 'BANKNIFTY']:
+                continue
+            
+            filtered_instruments.append(inst)
+        
+        print(f"📊 Filtered {len(filtered_instruments)} instruments (NIFTY & BANKNIFTY options)")
+        
         # Convert datetime objects to strings for JSON serialization
         serialized_instruments = []
-        for inst in instruments[:1000]:
+        for inst in filtered_instruments:
             inst_copy = dict(inst)
             
             # Convert expiry datetime to string

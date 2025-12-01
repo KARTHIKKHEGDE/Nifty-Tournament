@@ -39,7 +39,7 @@ class InstrumentCache {
                         return false;
                     }
                     const name = inst.name?.toUpperCase() || '';
-                    return name === 'NIFTY' || name === 'BANKNIFTY' || name === 'SENSEX';
+                    return name === 'NIFTY' || name === 'BANKNIFTY';
                 })
                 .map((inst: any) => {
                     const instrument: Instrument = {
@@ -62,11 +62,7 @@ class InstrumentCache {
 
             const niftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'NIFTY').length;
             const bankniftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'BANKNIFTY').length;
-            const sensexCount = this.instruments.filter(i => i.name.toUpperCase() === 'SENSEX').length;
-            console.log(`📊 NIFTY: ${niftyCount}, BANKNIFTY: ${bankniftyCount}, SENSEX: ${sensexCount}`);
-
-            const uniqueNames = new Set(this.instruments.map(i => i.name));
-            console.log(`📋 Unique names:`, Array.from(uniqueNames));
+            console.log(`📊 NIFTY: ${niftyCount}, BANKNIFTY: ${bankniftyCount}`);
         } catch (error) {
             console.error('❌ Failed to load instruments:', error);
             this.instruments = [];
@@ -119,8 +115,6 @@ class InstrumentCache {
     }
 
     getATMStrikes(index: string, spotPrice: number, limit: number = 20): Instrument[] {
-        console.log(`🎯 [getATMStrikes] index: ${index}, spotPrice: ${spotPrice}`);
-
         if (!this.isLoaded) return [];
 
         const normalizedIndex = index.toUpperCase();
@@ -131,8 +125,6 @@ class InstrumentCache {
                 allStrikes.add(inst.strike);
             }
         }
-
-        console.log(`📊 [getATMStrikes] Found ${allStrikes.size} strikes for ${normalizedIndex}`);
 
         const sortedStrikes = Array.from(allStrikes).sort((a, b) => a - b);
 
@@ -186,7 +178,6 @@ class InstrumentCache {
             if (results.length >= limit) break;
         }
 
-        console.log(`✅ [getATMStrikes] Returning ${results.length} instruments`);
         return results.slice(0, limit);
     }
 

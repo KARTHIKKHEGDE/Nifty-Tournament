@@ -76,9 +76,8 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
         itemToString: (item) => (item ? formatSuggestion(item) : ''),
     });
 
-    const filteredWatchlist = watchlist.filter((item) =>
-        item.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Don't filter watchlist - show all symbols always
+    const filteredWatchlist = watchlist;
 
     const handleChartClick = (symbol: WatchlistSymbol) => {
         onSymbolSelect(symbol);
@@ -117,7 +116,7 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                                         {...getItemProps({ item: suggestion, index })}
                                         onMouseEnter={() => setHoveredSuggestion(index)}
                                         onMouseLeave={() => setHoveredSuggestion(null)}
-                                        className={`px-3 py-2.5 cursor-pointer transition-all duration-150 ${highlightedIndex === index
+                                        className={`w-full px-3 py-2.5 cursor-pointer transition-all duration-150 ${highlightedIndex === index
                                             ? 'bg-blue-600 text-white'
                                             : 'text-gray-300 hover:bg-[#1e2329]'
                                             }`}
