@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { PaperPosition } from '../../types';
 import { formatCurrency, formatPercentage, getPriceColor } from '../../utils/formatters';
 import tradingService from '../../services/tradingService';
-import Button from '../common/Button';
 import Card from '../common/Card';
 import Loader from '../common/Loader';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
@@ -97,8 +96,8 @@ export default function PositionsTable() {
                     <button
                         onClick={() => setShowMode('day')}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showMode === 'day'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         Day
@@ -106,8 +105,8 @@ export default function PositionsTable() {
                     <button
                         onClick={() => setShowMode('net')}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showMode === 'net'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         Net
@@ -119,8 +118,8 @@ export default function PositionsTable() {
                     <button
                         onClick={() => setPnlMode('amount')}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'amount'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         ₹
@@ -128,8 +127,8 @@ export default function PositionsTable() {
                     <button
                         onClick={() => setPnlMode('percent')}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'percent'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         %

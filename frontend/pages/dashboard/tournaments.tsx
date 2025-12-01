@@ -3,7 +3,6 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import TournamentCard from '../../components/tournaments/TournamentCard';
 import Leaderboard from '../../components/tournaments/Leaderboard';
 import Loader from '../../components/common/Loader';
-import Button from '../../components/common/Button';
 import { Tournament, TournamentRanking, TournamentStatus } from '../../types';
 import tournamentService from '../../services/tournamentService';
 import { useUserStore } from '../../stores/userStore';
@@ -278,9 +277,12 @@ export default function TournamentsPage() {
 
                             {/* Footer */}
                             <div className="p-6 border-t border-gray-700 flex justify-end">
-                                <Button onClick={() => setShowLeaderboard(false)} variant="secondary">
+                                <button
+                                    onClick={() => setShowLeaderboard(false)}
+                                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                >
                                     Close
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     </div>
