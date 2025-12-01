@@ -1,4 +1,4 @@
-// Instrument cache for fast search
+// Instrument cache for fast search with IndexedDB persistence
 import api from '../services/api';
 
 export interface Instrument {
@@ -18,14 +18,87 @@ class InstrumentCache {
     private instruments: Instrument[] = [];
     private isLoaded: boolean = false;
     private isLoading: boolean = false;
+    private dbName = 'InstrumentCacheDB';
+    private storeName = 'instruments';
+    private cacheVersion = 1;
+
+    private async openDB(): Promise<IDBDatabase> {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.cacheVersion);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result;
+                if (!db.objectStoreNames.contains(this.storeName)) {
+                    db.createObjectStore(this.storeName);
+                }
+            };
+        });
+    }
+
+    private async getCachedInstruments(): Promise<{ instruments: Instrument[], timestamp: number } | null> {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([this.storeName], 'readonly');
+                const store = transaction.objectStore(this.storeName);
+                const request = store.get('cachedData');
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result || null);
+            });
+        } catch (error) {
+            console.error('Failed to get cached instruments:', error);
+            return null;
+        }
+    }
+
+    private async setCachedInstruments(instruments: Instrument[]): Promise<void> {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([this.storeName], 'readwrite');
+                const store = transaction.objectStore(this.storeName);
+                const request = store.put({
+                    instruments,
+                    timestamp: Date.now()
+                }, 'cachedData');
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve();
+            });
+        } catch (error) {
+            console.error('Failed to cache instruments:', error);
+        }
+    }
 
     async loadInstruments(): Promise<void> {
         if (this.isLoaded || this.isLoading) return;
 
         this.isLoading = true;
-        console.log('📥 Loading instruments from backend...');
+        console.log('📥 Loading instruments...');
 
         try {
+            const cached = await this.getCachedInstruments();
+            const cacheMaxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+            if (cached && (Date.now() - cached.timestamp) < cacheMaxAge) {
+                console.log(`✅ Loaded ${cached.instruments.length} instruments from cache`);
+                this.instruments = cached.instruments;
+                this.isLoaded = true;
+                this.isLoading = false;
+
+                const niftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'NIFTY').length;
+                const bankniftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'BANKNIFTY').length;
+                console.log(`📊 NIFTY: ${niftyCount}, BANKNIFTY: ${bankniftyCount} (cached)`);
+
+                this.refreshCacheInBackground();
+                return;
+            }
+
+            console.log('🌐 Fetching from backend...');
             const response = await api.get('/api/candles/instruments?exchange=NFO');
             const data = response.data;
 
@@ -41,8 +114,50 @@ class InstrumentCache {
                     const name = inst.name?.toUpperCase() || '';
                     return name === 'NIFTY' || name === 'BANKNIFTY';
                 })
-                .map((inst: any) => {
-                    const instrument: Instrument = {
+                .map((inst: any) => ({
+                    tradingSymbol: inst.tradingsymbol || '',
+                    name: inst.name || '',
+                    instrumentToken: inst.instrument_token || 0,
+                    exchange: inst.exchange || 'NFO',
+                    segment: inst.segment || 'NFO-OPT',
+                    instrumentType: inst.instrument_type || '',
+                    strike: inst.strike || 0,
+                    expiry: inst.expiry || '',
+                    optionType: inst.instrument_type === 'CE' ? 'CE' : inst.instrument_type === 'PE' ? 'PE' : null,
+                    searchText: `${inst.name || ''} ${inst.strike || ''} ${inst.expiry || ''} ${inst.instrument_type || ''} ${inst.tradingsymbol || ''}`.toLowerCase()
+                }));
+
+            this.isLoaded = true;
+            console.log(`✅ Loaded ${this.instruments.length} instruments`);
+
+            const niftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'NIFTY').length;
+            const bankniftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'BANKNIFTY').length;
+            console.log(`📊 NIFTY: ${niftyCount}, BANKNIFTY: ${bankniftyCount}`);
+
+            await this.setCachedInstruments(this.instruments);
+            console.log('💾 Cached to IndexedDB');
+        } catch (error) {
+            console.error('❌ Failed to load instruments:', error);
+            this.instruments = [];
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    private async refreshCacheInBackground(): Promise<void> {
+        try {
+            console.log('🔄 Refreshing cache...');
+            const response = await api.get('/api/candles/instruments?exchange=NFO');
+            const data = response.data;
+
+            if (data.instruments) {
+                const freshInstruments = data.instruments
+                    .filter((inst: any) => {
+                        if (inst.instrument_type !== 'CE' && inst.instrument_type !== 'PE') return false;
+                        const name = inst.name?.toUpperCase() || '';
+                        return name === 'NIFTY' || name === 'BANKNIFTY';
+                    })
+                    .map((inst: any) => ({
                         tradingSymbol: inst.tradingsymbol || '',
                         name: inst.name || '',
                         instrumentToken: inst.instrument_token || 0,
@@ -53,21 +168,13 @@ class InstrumentCache {
                         expiry: inst.expiry || '',
                         optionType: inst.instrument_type === 'CE' ? 'CE' : inst.instrument_type === 'PE' ? 'PE' : null,
                         searchText: `${inst.name || ''} ${inst.strike || ''} ${inst.expiry || ''} ${inst.instrument_type || ''} ${inst.tradingsymbol || ''}`.toLowerCase()
-                    };
-                    return instrument;
-                });
+                    }));
 
-            this.isLoaded = true;
-            console.log(`✅ Loaded ${this.instruments.length} option instruments`);
-
-            const niftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'NIFTY').length;
-            const bankniftyCount = this.instruments.filter(i => i.name.toUpperCase() === 'BANKNIFTY').length;
-            console.log(`📊 NIFTY: ${niftyCount}, BANKNIFTY: ${bankniftyCount}`);
+                await this.setCachedInstruments(freshInstruments);
+                console.log('✅ Cache refreshed');
+            }
         } catch (error) {
-            console.error('❌ Failed to load instruments:', error);
-            this.instruments = [];
-        } finally {
-            this.isLoading = false;
+            console.error('❌ Refresh failed:', error);
         }
     }
 
@@ -191,3 +298,8 @@ class InstrumentCache {
 }
 
 export const instrumentCache = new InstrumentCache();
+
+// Auto-load on import
+if (typeof window !== 'undefined') {
+    instrumentCache.loadInstruments();
+}
