@@ -17,11 +17,22 @@ export default function DashboardLayout({
     showWatchlist = true,
     onSymbolSelect,
 }: DashboardLayoutProps) {
-    const { initializeWatchlist } = useSymbolStore();
+    const { initializeWatchlist, fetchWatchlistPrices } = useSymbolStore();
 
     useEffect(() => {
+        // Initialize watchlist with default symbols
         initializeWatchlist();
-    }, [initializeWatchlist]);
+
+        // Fetch real prices immediately
+        fetchWatchlistPrices();
+
+        // Set up auto-refresh every 30 seconds
+        const interval = setInterval(() => {
+            fetchWatchlistPrices();
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(interval);
+    }, [initializeWatchlist, fetchWatchlistPrices]);
 
     const handleSymbolSelect = (symbol: WatchlistSymbol) => {
         if (onSymbolSelect) {

@@ -52,8 +52,8 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                         onMouseLeave={() => setHoveredSymbol(null)}
                     >
                         <div className="px-3 py-3">
-                            {/* Symbol Name */}
-                            <div className="flex items-center justify-between mb-1">
+                            {/* Symbol Name and Chart Button */}
+                            <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium text-gray-200">
                                     {item.displayName}
                                 </span>
@@ -67,33 +67,31 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                                 )}
                             </div>
 
-                            {/* Price and Change */}
-                            {hoveredSymbol !== item.symbol && (
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-semibold text-white">
-                                        ₹{item.ltp.toLocaleString('en-IN', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })}
+                            {/* Price and Change - Always visible */}
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-white">
+                                    ₹{item.ltp.toLocaleString('en-IN', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </span>
+                                <div
+                                    className={`flex items-center gap-1 text-xs font-medium ${item.changePercent >= 0
+                                        ? 'text-green-500'
+                                        : 'text-red-500'
+                                        }`}
+                                >
+                                    {item.changePercent >= 0 ? (
+                                        <TrendingUp className="w-3 h-3" />
+                                    ) : (
+                                        <TrendingDown className="w-3 h-3" />
+                                    )}
+                                    <span>
+                                        {item.changePercent >= 0 ? '+' : ''}
+                                        {item.changePercent.toFixed(2)}%
                                     </span>
-                                    <div
-                                        className={`flex items-center gap-1 text-xs font-medium ${item.changePercent >= 0
-                                                ? 'text-green-500'
-                                                : 'text-red-500'
-                                            }`}
-                                    >
-                                        {item.changePercent >= 0 ? (
-                                            <TrendingUp className="w-3 h-3" />
-                                        ) : (
-                                            <TrendingDown className="w-3 h-3" />
-                                        )}
-                                        <span>
-                                            {item.changePercent >= 0 ? '+' : ''}
-                                            {item.changePercent.toFixed(2)}%
-                                        </span>
-                                    </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 ))}

@@ -18,7 +18,7 @@ async def get_candles(
     symbol: str = Query(..., description="Trading symbol or instrument token"),
     instrument_token: int = Query(None, description="Zerodha instrument token (required for real data)"),
     timeframe: str = Query("5minute", description="Timeframe (minute, 5minute, 15minute, 30minute, 60minute, day)"),
-    limit: int = Query(400, ge=1, le=1000, description="Number of candles to return"),
+    limit: int = Query(200, ge=1, le=1000, description="Number of candles to return"),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -28,7 +28,7 @@ async def get_candles(
         symbol: Trading symbol
         instrument_token: Zerodha instrument token (required for real data)
         timeframe: Candle timeframe
-        limit: Number of candles (default 400)
+        limit: Number of candles (default 200)
         
     Returns:
         List of candles with OHLCV data
