@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '../stores/userStore';
+import { initializeInstrumentCache } from '../utils/searchUtils';
 import '../styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -10,9 +11,13 @@ export default function App({ Component, pageProps }: AppProps) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Load user on app mount and wait for it to complete
+        // Load user and instrument cache on app mount
         const initAuth = async () => {
             await loadUser();
+            // Load instruments for instant search (only option instruments)
+            console.log('📥 Initializing instrument cache...');
+            await initializeInstrumentCache();
+            console.log('✅ Instrument cache ready!');
             setIsLoading(false);
         };
 

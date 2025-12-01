@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, Plus } from 'lucide-react';
 import { OptionData, OrderSide } from '../../types';
 import { formatCurrency, formatLargeNumber, formatPercentage, isATM } from '../../utils/formatters';
 
@@ -7,7 +7,7 @@ interface OptionsChainProps {
     spotPrice: number;
     calls: OptionData[];
     puts: OptionData[];
-    onOptionSelect?: (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART') => void;
+    onOptionSelect?: (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => void;
 }
 
 export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }: OptionsChainProps) {
@@ -23,7 +23,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
     const getCallForStrike = (strike: number) => calls.find((c) => c.strike_price === strike);
     const getPutForStrike = (strike: number) => puts.find((p) => p.strike_price === strike);
 
-    const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART') => {
+    const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => {
         setSelectedStrike(option.strike_price);
         onOptionSelect?.(option, action);
     };
@@ -36,6 +36,13 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
 
     const ActionButtons = ({ option }: { option: OptionData }) => (
         <div className="flex items-center gap-1 justify-end">
+            <button
+                onClick={(e) => { e.stopPropagation(); handleAction(option, 'WATCHLIST'); }}
+                className="w-6 h-6 rounded bg-yellow-500/20 hover:bg-yellow-500 text-yellow-500 hover:text-white flex items-center justify-center transition-colors"
+                title="Add to Watchlist"
+            >
+                <Plus className="w-3 h-3" />
+            </button>
             <button
                 onClick={(e) => { e.stopPropagation(); handleAction(option, 'BUY'); }}
                 className="w-6 h-6 rounded bg-green-500/20 hover:bg-green-500 text-green-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors"

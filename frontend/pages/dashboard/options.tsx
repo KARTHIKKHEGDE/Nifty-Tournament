@@ -10,6 +10,7 @@ import { formatDate } from '../../utils/formatters';
 import api from '../../services/api';
 import { useChartData } from '../../hooks/useChartData';
 import { useOptionsChain } from '../../hooks/useOptionsChain';
+import { useSymbolStore } from '../../stores/symbolStore';
 
 export default function OptionsPage() {
     // Use hooks
@@ -106,7 +107,26 @@ export default function OptionsPage() {
         }
     }, [selectedExpiry, fetchOptionsChain]);
 
-    const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART') => {
+    const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => {
+        if (action === 'WATCHLIST') {
+            const symbolExists = useSymbolStore.getState().watchlist.find(item => item.symbol === option.symbol);
+            if (symbolExists) {
+                console.log(`⚠️ ${option.symbol} is already in watchlist`);
+                return;
+            }
+            useSymbolStore.setState((state) => ({
+                watchlist: [...state.watchlist, {
+                    symbol: option.symbol,
+                    displayName: option.symbol,
+                    ltp: option.ltp,
+                    change: 0,
+                    changePercent: option.change_percent,
+                    instrumentToken: option.instrument_token,
+                }]
+            }));
+            console.log(`✅ Added ${option.symbol} to watchlist`);
+            return;
+        }
         if (action === 'CHART') {
             // Open chart in new window with option data
             const params = new URLSearchParams({

@@ -81,7 +81,26 @@ export default function DashboardHome() {
     };
 
     // Handle option selection (for chart button)
-    const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART') => {
+    const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => {
+        if (action === 'WATCHLIST') {
+            const symbolExists = useSymbolStore.getState().watchlist.find(item => item.symbol === option.symbol);
+            if (symbolExists) {
+                console.log(`⚠️ ${option.symbol} is already in watchlist`);
+                return;
+            }
+            useSymbolStore.setState((state) => ({
+                watchlist: [...state.watchlist, {
+                    symbol: option.symbol,
+                    displayName: option.symbol,
+                    ltp: option.ltp,
+                    change: 0,
+                    changePercent: option.change_percent,
+                    instrumentToken: option.instrument_token,
+                }]
+            }));
+            console.log(`✅ Added ${option.symbol} to watchlist`);
+            return;
+        }
         if (action === 'CHART') {
             // Open chart in new window with option data
             const params = new URLSearchParams({

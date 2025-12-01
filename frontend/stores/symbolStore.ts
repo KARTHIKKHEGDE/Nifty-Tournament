@@ -18,6 +18,8 @@ interface SymbolStore {
     // Actions
     setSelectedSymbol: (symbol: WatchlistSymbol | null) => void;
     updateWatchlistPrice: (symbol: string, ltp: number, change: number, changePercent: number) => void;
+    addToWatchlist: (symbol: WatchlistSymbol) => void;
+    removeFromWatchlist: (symbol: string) => void;
     setShowChart: (show: boolean) => void;
     initializeWatchlist: () => void;
     fetchWatchlistPrices: () => Promise<void>;
@@ -37,6 +39,24 @@ export const useSymbolStore = create<SymbolStore>((set, get) => ({
                     ? { ...item, ltp, change, changePercent }
                     : item
             ),
+        })),
+
+    addToWatchlist: (symbol) =>
+        set((state) => {
+            // Check if symbol already exists
+            const exists = state.watchlist.some((item) => item.symbol === symbol.symbol);
+            if (exists) {
+                console.log(`⚠️ ${symbol.symbol} already in watchlist`);
+                return state;
+            }
+            return {
+                watchlist: [...state.watchlist, symbol],
+            };
+        }),
+
+    removeFromWatchlist: (symbol) =>
+        set((state) => ({
+            watchlist: state.watchlist.filter((item) => item.symbol !== symbol),
         })),
 
     setShowChart: (show) => set({ showChart: show }),
@@ -59,14 +79,6 @@ export const useSymbolStore = create<SymbolStore>((set, get) => ({
                     change: -85.25,
                     changePercent: -0.17,
                     instrumentToken: 260105,
-                },
-                {
-                    symbol: 'SENSEX',
-                    displayName: 'SENSEX',
-                    ltp: 80500.00,
-                    change: 200.75,
-                    changePercent: 0.25,
-                    instrumentToken: 265,
                 },
             ],
         }),
