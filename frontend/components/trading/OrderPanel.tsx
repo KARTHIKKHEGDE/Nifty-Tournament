@@ -68,7 +68,7 @@ export default function OrderPanel({ symbol, currentPrice, instrumentType = 'IND
                 symbol,
                 instrument_type: instrumentType,
                 order_type: orderType,
-                side,
+                order_side: side,
                 quantity,
                 price: orderType !== OrderType.MARKET ? price : undefined,
                 stop_loss: stopLoss > 0 ? stopLoss : undefined,

@@ -9,6 +9,7 @@ export default function ChartPage() {
     const { candles, isLoading, fetchCandles } = useChartData();
     const [symbol, setSymbol] = useState('');
     const [windowHeight, setWindowHeight] = useState(600);
+    const [currentTimeframe, setCurrentTimeframe] = useState('5m');
 
     useEffect(() => {
         setWindowHeight(window.innerHeight);
@@ -17,31 +18,58 @@ export default function ChartPage() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Map timeframe to backend format
+    const mapTimeframeToBackend = (timeframe: string): string => {
+        const mapping: Record<string, string> = {
+            '1m': 'minute',
+            '3m': '3minute',
+            '5m': '5minute',
+            '15m': '15minute',
+            '30m': '30minute',
+            '1h': '60minute',
+            '1d': 'day'
+        };
+        return mapping[timeframe] || timeframe;
+    };
+
     useEffect(() => {
         if (!router.isReady) return;
 
-        const { symbol, instrument_token } = router.query;
+        const { symbol, instrument_token, timeframe } = router.query;
 
         if (symbol) {
             setSymbol(symbol as string);
         }
 
+        if (timeframe) {
+            setCurrentTimeframe(timeframe as string);
+        }
+
         if (instrument_token && symbol) {
             const token = parseInt(instrument_token as string);
             const symbolStr = symbol as string;
+            const tf = (timeframe as string) || '5m';
+            const backendTf = mapTimeframeToBackend(tf);
 
-            // Initial fetch
-            fetchCandles(symbolStr, token, '5minute', 200);
-
-            // Auto-refresh every 30 seconds
-            const refreshInterval = setInterval(() => {
-                console.log('🔄 Auto-refreshing candle data...');
-                fetchCandles(symbolStr, token, '5minute', 200);
-            }, 30000);
-
-            return () => clearInterval(refreshInterval);
+            // Initial fetch - WebSocket will handle real-time updates
+            fetchCandles(symbolStr, token, backendTf, 200);
         }
     }, [router.isReady, router.query, fetchCandles]);
+
+    const handleTimeframeChange = (timeframe: string) => {
+        setCurrentTimeframe(timeframe);
+        const { symbol, instrument_token } = router.query;
+        
+        if (symbol && instrument_token) {
+            const backendTf = mapTimeframeToBackend(timeframe);
+            fetchCandles(
+                symbol as string,
+                parseInt(instrument_token as string),
+                backendTf,
+                200
+            );
+        }
+    };
 
     return (
         <>
@@ -60,6 +88,8 @@ export default function ChartPage() {
                         showVolume={false}
                         height={windowHeight}
                         isNiftyChart={false}
+                        onTimeframeChange={handleTimeframeChange}
+                        currentTimeframe={currentTimeframe}
                     />
                 )}
             </div>

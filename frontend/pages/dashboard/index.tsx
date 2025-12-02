@@ -61,6 +61,7 @@ export default function DashboardHome() {
         }
 
         const backendTimeframe = mapTimeframeToBackend(timeframe);
+        // Fetch initial candles - WebSocket will handle real-time updates
         await fetchCandles(symbol.symbol, symbol.instrumentToken, backendTimeframe, 200);
     };
 
@@ -128,7 +129,6 @@ export default function DashboardHome() {
             return;
         }
         // For BUY/SELL actions, you can add logic here if needed
-        console.log('🔵 [Dashboard] Option selected:', { action, symbol: option.symbol });
     };
 
     // Effect to fetch options chain when tab changes to OPTION_CHAIN
@@ -394,11 +394,11 @@ export default function DashboardHome() {
                                                     {order.symbol}
                                                 </td>
                                                 <td className="py-3">
-                                                    <span className={`text-xs font-medium px-2 py-1 rounded ${order.side === 'BUY'
+                                                    <span className={`text-xs font-medium px-2 py-1 rounded ${order.order_side === 'BUY'
                                                         ? 'bg-blue-900/30 text-blue-400'
                                                         : 'bg-red-900/30 text-red-400'
                                                         }`}>
-                                                        {order.side}
+                                                        {order.order_side}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 text-sm text-gray-300 text-right">

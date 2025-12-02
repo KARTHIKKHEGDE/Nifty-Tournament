@@ -78,16 +78,26 @@ async def get_candles(
     
     # Helper function to adjust to market hours
     def get_market_end_time(dt: datetime) -> datetime:
-        """Get the last market close time before or at the given datetime"""
-        # If it's a weekend, go back to Friday
+        """Get the appropriate end time for fetching candles based on current market status"""
+        # If it's a weekend, go back to Friday's close
         while dt.weekday() >= 5:  # 5=Saturday, 6=Sunday
             dt = dt - timedelta(days=1)
         
-        # Set to market close time (3:30 PM)
+        # Market hours: 9:15 AM to 3:30 PM
+        market_open = dt.replace(hour=9, minute=15, second=0, microsecond=0)
         market_close = dt.replace(hour=15, minute=30, second=0, microsecond=0)
         
-        # If current time is before market close today, use previous day's close
-        if dt < market_close:
+        # If market is currently open (between 9:15 AM and 3:30 PM on a weekday)
+        if market_open <= dt <= market_close and dt.weekday() < 5:
+            # Return current time to fetch live candles including today
+            return dt
+        
+        # If current time is after market close today, use today's close
+        if dt > market_close and dt.weekday() < 5:
+            return market_close
+        
+        # If current time is before market open today, use previous day's close
+        if dt < market_open:
             dt = dt - timedelta(days=1)
             # Check if previous day is weekend
             while dt.weekday() >= 5:

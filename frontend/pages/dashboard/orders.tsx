@@ -110,12 +110,12 @@ export default function OrdersPage() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${order.side === 'BUY'
+                                                    className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${order.order_side === 'BUY'
                                                         ? 'bg-blue-900/30 text-blue-400'
                                                         : 'bg-red-900/30 text-red-400'
                                                         }`}
                                                 >
-                                                    {order.side}
+                                                    {order.order_side}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-300">

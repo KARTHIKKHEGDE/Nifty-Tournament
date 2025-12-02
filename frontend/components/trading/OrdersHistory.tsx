@@ -143,8 +143,8 @@ export default function OrdersHistory({ refreshTrigger }: OrdersHistoryProps) {
                                                     <td className="py-3 px-4 text-sm text-gray-300">
                                                         {order.order_type}
                                                     </td>
-                                                    <td className={`py-3 px-4 text-sm font-semibold ${getSideColor(order.side)}`}>
-                                                        {order.side}
+                                                    <td className={`py-3 px-4 text-sm font-semibold ${getSideColor(order.order_side)}`}>
+                                                        {order.order_side}
                                                     </td>
                                                     <td className="py-3 px-4 text-sm text-right text-gray-300">
                                                         {order.quantity}

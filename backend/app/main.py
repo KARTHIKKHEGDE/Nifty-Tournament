@@ -63,6 +63,30 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
     
+    # Initialize and start KiteTicker service
+    try:
+        from app.services.ticker_service import get_ticker_service, start_ticker_service
+        from app.websocket.handlers import broadcast_tick_data
+        import asyncio
+        
+        ticker_service = get_ticker_service()
+        if ticker_service:
+            # Set callback to broadcast ticks to WebSocket clients
+            def tick_callback(tick_data):
+                # Run async broadcast in event loop
+                try:
+                    asyncio.create_task(broadcast_tick_data(tick_data))
+                except Exception as e:
+                    logger.error(f"Error broadcasting tick data: {e}")
+            
+            ticker_service.set_tick_callback(tick_callback)
+            start_ticker_service()
+            logger.info("✓ KiteTicker service started")
+        else:
+            logger.warning("⚠ KiteTicker service not available (missing credentials)")
+    except Exception as e:
+        logger.error(f"Failed to start KiteTicker service: {e}")
+    
     logger.info("Application startup complete")
 
 
@@ -73,6 +97,14 @@ async def shutdown_event():
     Clean up resources.
     """
     logger.info("Shutting down application")
+    
+    # Stop KiteTicker service
+    try:
+        from app.services.ticker_service import stop_ticker_service
+        stop_ticker_service()
+        logger.info("✓ KiteTicker service stopped")
+    except Exception as e:
+        logger.error(f"Error stopping KiteTicker service: {e}")
 
 
 @app.get("/")
@@ -135,15 +167,36 @@ async def websocket_endpoint(
         "timestamp": "2024-01-01T10:00:00"
     }
     """
-    # Verify JWT token
-    user_id = verify_token(token)
+    logger.info(f"🔵 [WebSocket] New connection attempt")
+    logger.info(f"🔵 [WebSocket] Token received: {token[:20]}..." if len(token) > 20 else f"🔵 [WebSocket] Token: {token}")
+    
+    # Verify JWT token BEFORE accepting connection
+    try:
+        user_id = verify_token(token)
+        logger.info(f"🔵 [WebSocket] Token verification result: user_id={user_id}")
+    except Exception as e:
+        logger.error(f"❌ [WebSocket] Token verification error: {e}")
+        # Must accept connection before closing it
+        await websocket.accept()
+        await websocket.close(code=1008, reason=f"Token verification failed: {str(e)}")
+        return
     
     if user_id is None:
+        logger.error(f"❌ [WebSocket] Invalid token - closing connection")
+        # Must accept connection before closing it
+        await websocket.accept()
         await websocket.close(code=1008, reason="Invalid token")
         return
     
-    # Accept connection
-    await manager.connect(websocket, user_id)
+    # Accept connection for valid user
+    logger.info(f"✅ [WebSocket] Token valid, accepting connection for user {user_id}")
+    try:
+        await manager.connect(websocket, user_id)
+        logger.info(f"✅ [WebSocket] Connection accepted for user {user_id}")
+    except Exception as e:
+        logger.error(f"❌ [WebSocket] Failed to accept connection: {e}")
+        await websocket.close(code=1011, reason=f"Connection error: {str(e)}")
+        return
     
     try:
         # Send welcome message

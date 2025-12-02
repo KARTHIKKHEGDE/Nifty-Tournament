@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     
-    # Zerodha API (for market data only)
-    ZERODHA_API_KEY: str
-    ZERODHA_API_SECRET: str
+    # Zerodha API (for market data only) - OPTIONAL
+    ZERODHA_API_KEY: str = ""
+    ZERODHA_API_SECRET: str = ""
     ZERODHA_ACCESS_TOKEN: str = ""  # Optional: Pre-generated access token
     
     # Paper Trading Settings
@@ -67,8 +67,48 @@ class Settings(BaseSettings):
     MIN_ORDER_VALUE: float = 100.0
     
     class Config:
-        env_file = ".env"
+        # Use absolute path to .env file in backend directory
+        from pathlib import Path
+        backend_dir = Path(__file__).parent.parent
+        env_file = str(backend_dir / ".env")
+        env_file_encoding = 'utf-8'
         case_sensitive = True
+        
+        @classmethod
+        def customise_sources(cls, init_settings, env_settings, file_secret_settings):
+            """Load from both .env and secrets.env, with secrets.env taking precedence"""
+            from pydantic_settings import (
+                PydanticBaseSettingsSource,
+                SettingsConfigDict,
+            )
+            from pydantic import BaseModel
+            from pathlib import Path
+            
+            # Load secrets.env if it exists
+            secrets_file = Path(__file__).parent.parent / "secrets.env"
+            
+            if secrets_file.exists():
+                from pydantic_settings import DotEnvSettingsSource
+                secrets_settings = DotEnvSettingsSource(
+                    Settings,
+                    env_file=secrets_file,
+                    env_file_encoding='utf-8',
+                    case_sensitive=True
+                )
+                # Priority: secrets.env > .env > init_settings
+                return (
+                    init_settings,
+                    secrets_settings,  # Higher priority
+                    env_settings,      # Lower priority
+                    file_secret_settings,
+                )
+            else:
+                # If no secrets.env, use default priority
+                return (
+                    init_settings,
+                    env_settings,
+                    file_secret_settings,
+                )
 
 
 # Create settings instance

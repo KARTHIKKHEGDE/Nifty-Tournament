@@ -50,7 +50,7 @@ export interface PaperOrder {
     symbol: string;
     instrument_type: 'INDEX' | 'CE' | 'PE';
     order_type: OrderType;
-    side: OrderSide;
+    order_side: OrderSide;
     quantity: number;
     price?: number;
     stop_loss?: number;
@@ -213,7 +213,15 @@ export interface WSMessage {
     type: WSMessageType;
     data?: any;
     symbol?: string;
+    instrument_token?: number;
     error?: string;
+}
+
+// Add WebSocket connection status
+export interface WSConnectionStatus {
+    status: 'connected' | 'disconnected' | 'connecting';
+    lastConnected?: Date;
+    reconnectAttempts?: number;
 }
 
 // API Response Types
@@ -249,7 +257,7 @@ export interface OrderForm {
     symbol: string;
     instrument_type: 'INDEX' | 'CE' | 'PE';
     order_type: OrderType;
-    side: OrderSide;
+    order_side: OrderSide;
     quantity: number;
     price?: number;
     stop_loss?: number;
@@ -285,8 +293,8 @@ export interface PrizeDistribution {
     payment_status: PaymentStatus;
     payment_method?: string;
     payment_details?: Record<string, any>;
-    paid_at?: string;
     created_at: string;
+    updated_at: string;
 }
 
 // User Settings Types

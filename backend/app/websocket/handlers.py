@@ -55,9 +55,10 @@ async def handle_subscribe(user_id: int, data: Dict[str, Any]):
     
     Args:
         user_id: User ID
-        data: Message data containing symbol
+        data: Message data containing symbol and instrument_token
     """
     symbol = data.get("symbol")
+    instrument_token = data.get("instrument_token")
     
     if not symbol:
         await manager.send_personal_message({
@@ -66,18 +67,33 @@ async def handle_subscribe(user_id: int, data: Dict[str, Any]):
         }, user_id)
         return
     
+    if not instrument_token:
+        await manager.send_personal_message({
+            "type": "error",
+            "message": "instrument_token is required for subscription"
+        }, user_id)
+        return
+    
+    # Subscribe user to symbol in manager
     manager.subscribe(user_id, symbol)
     
-    # Start price simulator for this symbol (for testing)
-    from app.services.price_simulator import get_simulator
-    simulator = get_simulator()
+    # Subscribe to Zerodha KiteTicker
+    from app.services.ticker_service import get_ticker_service
+    ticker_service = get_ticker_service()
     
-    # Extract base price if provided, otherwise use default
-    base_price = data.get("base_price", 100.0)
-    simulator.add_symbol(symbol, base_price)
-    
-    # Start simulator if not already running
-    await simulator.start()
+    if ticker_service:
+        try:
+            ticker_service.subscribe(symbol, instrument_token)
+            logger.info(f"User {user_id} subscribed to {symbol} (token: {instrument_token})")
+        except Exception as e:
+            logger.error(f"Failed to subscribe to KiteTicker: {e}")
+            await manager.send_personal_message({
+                "type": "error",
+                "message": f"Failed to subscribe to market data: {str(e)}"
+            }, user_id)
+            return
+    else:
+        logger.warning("KiteTicker service not available - using mock data")
     
     await manager.send_personal_message({
         "type": "subscribed",
@@ -103,7 +119,19 @@ async def handle_unsubscribe(user_id: int, data: Dict[str, Any]):
         }, user_id)
         return
     
+    # Unsubscribe user from symbol in manager
     manager.unsubscribe(user_id, symbol)
+    
+    # Unsubscribe from Zerodha KiteTicker
+    from app.services.ticker_service import get_ticker_service
+    ticker_service = get_ticker_service()
+    
+    if ticker_service:
+        try:
+            ticker_service.unsubscribe(symbol)
+            logger.info(f"User {user_id} unsubscribed from {symbol}")
+        except Exception as e:
+            logger.error(f"Failed to unsubscribe from KiteTicker: {e}")
     
     await manager.send_personal_message({
         "type": "unsubscribed",
