@@ -148,7 +148,7 @@ export default function Signup() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-semibold mb-1">Live Market Data</h3>
-                                        <p className="text-gray-400 text-sm">Real-time NIFTY options data from Zerodha</p>
+                                        <p className="text-gray-400 text-sm">Real-time NIFTY options with live market data</p>
                                     </div>
                                 </div>
 

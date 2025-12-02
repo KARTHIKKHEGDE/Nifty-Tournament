@@ -46,7 +46,7 @@ export default function PositionsTable() {
         }
     };
 
-    // Calculate P&L based on Zerodha logic
+    // Calculate P&L based on current market price
     const calculatePnL = (position: PaperPosition): number => {
         const ltp = position.ltp || position.current_price || position.average_price;
 

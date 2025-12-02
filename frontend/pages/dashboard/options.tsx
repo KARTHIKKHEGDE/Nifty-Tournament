@@ -92,8 +92,8 @@ export default function OptionsPage() {
                     console.error('Failed to fetch from options chain:', chainError);
                 }
 
-                console.error('Could not fetch expiry dates from Zerodha API');
-                alert('Failed to fetch expiry dates. Please check if Zerodha access token is configured correctly.');
+                console.error('Could not fetch expiry dates from market data API');
+                alert('Failed to fetch expiry dates. Please check if market data API is configured correctly.');
             }
         };
 

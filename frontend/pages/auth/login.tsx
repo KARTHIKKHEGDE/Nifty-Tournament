@@ -111,7 +111,7 @@ export default function Login() {
                                     </div>
                                     <div>
                                         <h3 className="text-white font-semibold mb-1">Real-Time Market Data</h3>
-                                        <p className="text-gray-400 text-sm">Live NIFTY options data powered by Zerodha</p>
+                                        <p className="text-gray-400 text-sm">Live NIFTY options with real-time market data</p>
                                     </div>
                                 </div>
 

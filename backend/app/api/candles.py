@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
-from app.services.zerodha_service import get_zerodha_service
+from app.services.market_data_service import get_market_data_service
 from app.api.dependencies import get_current_user
 from app.models.user import User
 
@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/")
 async def get_candles(
     symbol: str = Query(..., description="Trading symbol or instrument token"),
-    instrument_token: int = Query(None, description="Zerodha instrument token (required for real data)"),
+    instrument_token: int = Query(None, description="Market data instrument token (required for real data)"),
     timeframe: str = Query("5minute", description="Timeframe (minute, 5minute, 15minute, 30minute, 60minute, day)"),
     limit: int = Query(200, ge=1, le=1000, description="Number of candles to return"),
     current_user: User = Depends(get_current_user)
@@ -26,7 +26,7 @@ async def get_candles(
     
     Args:
         symbol: Trading symbol
-        instrument_token: Zerodha instrument token (required for real data)
+        instrument_token: Market data instrument token (required for real data)
         timeframe: Candle timeframe
         limit: Number of candles (default 200)
         
@@ -39,7 +39,7 @@ async def get_candles(
     logger.info(f"🔵 [get_candles] START - Symbol: {symbol}, Timeframe: {timeframe}, Limit: {limit}")
     logger.info(f"🔵 [get_candles] Instrument token: {instrument_token}")
     
-    zerodha = get_zerodha_service()
+    market_data = get_market_data_service()
     
     # If instrument_token is not provided, return error
     if not instrument_token:
@@ -49,7 +49,7 @@ async def get_candles(
             detail="instrument_token is required to fetch real candle data"
         )
     
-    # Map timeframe to Zerodha interval
+    # Map timeframe to API interval
     timeframe_map = {
         "1m": "minute",
         "minute": "minute",
@@ -152,21 +152,21 @@ async def get_candles(
     logger.info(f"🔵 [get_candles] Market hours adjusted: {from_date.strftime('%Y-%m-%d %H:%M')} to {to_date.strftime('%Y-%m-%d %H:%M')}")
     
     try:
-        # Fetch historical data from Zerodha
-        logger.info(f"🔵 [get_candles] Fetching from Zerodha...")
-        candles_data = zerodha.get_historical_data(
+        # Fetch historical data from market data API
+        logger.info(f"🔵 [get_candles] Fetching from market data API...")
+        candles_data = market_data.get_historical_data(
             instrument_token=instrument_token,
             from_date=from_date,
             to_date=to_date,
             interval=interval
         )
         
-        logger.info(f"✅ [get_candles] Received {len(candles_data)} candles from Zerodha")
+        logger.info(f"✅ [get_candles] Received {len(candles_data)} candles from market data API")
         
-        # If no data from Zerodha, use mock data
+        # If no data from API, use mock data
         if len(candles_data) == 0:
-            logger.warning(f"⚠️ [get_candles] Zerodha returned 0 candles - falling back to mock data")
-            raise Exception("No candles from Zerodha - using mock data")
+            logger.warning(f"⚠️ [get_candles] Market data API returned 0 candles - falling back to mock data")
+            raise Exception("No candles from market data API - using mock data")
         
         # Transform to frontend format
         candles = []
@@ -186,7 +186,7 @@ async def get_candles(
     except Exception as e:
         # Log the error and return mock data as fallback
         import random
-        logger.error(f"❌ [get_candles] Error fetching from Zerodha: {str(e)}")
+        logger.error(f"❌ [get_candles] Error fetching from market data API: {str(e)}")
         logger.error(f"❌ [get_candles] Error type: {type(e).__name__}")
         logger.warning(f"⚠️ [get_candles] Returning mock data as fallback")
         
@@ -252,14 +252,14 @@ async def get_options_chain(
     Returns:
         Options chain with CE and PE options
     """
-    zerodha = get_zerodha_service()
+    market_data = get_market_data_service()
     
     try:
-        options_chain = zerodha.get_options_chain(symbol, expiry_date)
+        options_chain = market_data.get_options_chain(symbol, expiry_date)
         
-        # Get spot price using correct symbol for Zerodha
+        # Get spot price using correct symbol
         spot_symbol = f"NSE:{symbol} 50" if symbol == "NIFTY" else f"NSE:{symbol}"
-        spot_price = zerodha.get_current_price(spot_symbol) or 0
+        spot_price = market_data.get_current_price(spot_symbol) or 0
 
         return {
             "symbol": symbol,
@@ -289,10 +289,10 @@ async def get_instruments(
     Returns:
         List of instruments with properly formatted dates
     """
-    zerodha = get_zerodha_service()
+    market_data = get_market_data_service()
     
     try:
-        instruments = zerodha.get_instruments(exchange)
+        instruments = market_data.get_instruments(exchange)
         
         # Filter for NIFTY and BANKNIFTY options only
         filtered_instruments = []

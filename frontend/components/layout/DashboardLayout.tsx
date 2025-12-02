@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import Head from 'next/head';
-import ZerodhaNavbar from './Navbar';
+import MainNavbar from './Navbar';
 import WatchlistSidebar from './WatchlistSidebar';
 import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
 
@@ -47,7 +47,7 @@ export default function DashboardLayout({
             </Head>
 
             <div className="min-h-screen bg-[#131722] flex flex-col">
-                <ZerodhaNavbar />
+                <MainNavbar />
                 <div className="flex flex-1 overflow-hidden">
                     {showWatchlist && (
                         <WatchlistSidebar onSymbolSelect={handleSymbolSelect} />

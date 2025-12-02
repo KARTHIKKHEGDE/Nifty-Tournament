@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 
-export default function ZerodhaNavbar() {
+export default function MainNavbar() {
     const router = useRouter();
     const { user, logout } = useUserStore();
     const [showUserMenu, setShowUserMenu] = React.useState(false);

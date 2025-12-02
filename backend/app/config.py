@@ -31,10 +31,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     
-    # Zerodha API (for market data only) - OPTIONAL
-    ZERODHA_API_KEY: str = ""
-    ZERODHA_API_SECRET: str = ""
-    ZERODHA_ACCESS_TOKEN: str = ""  # Optional: Pre-generated access token
+    # Market Data API (for market data only) - OPTIONAL
+    MARKET_API_KEY: str = ""
+    MARKET_API_SECRET: str = ""
+    MARKET_ACCESS_TOKEN: str = ""  # Optional: Pre-generated access token
     
     # Paper Trading Settings
     PAPER_TRADING_ONLY: bool = True  # Always True - this is a paper trading platform

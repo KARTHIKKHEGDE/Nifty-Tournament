@@ -76,7 +76,7 @@ class PaperOrder(Base):
     # Instrument details
     symbol = Column(String, nullable=False, index=True)
     instrument_type = Column(SQLEnum(InstrumentType), nullable=False)
-    instrument_token = Column(Integer, nullable=True)  # Zerodha instrument token
+    instrument_token = Column(Integer, nullable=True)  # Market data instrument token
     
     # Order details
     order_type = Column(SQLEnum(OrderType), nullable=False)

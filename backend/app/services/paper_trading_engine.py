@@ -1,6 +1,6 @@
 """
 Paper Trading Engine for simulating order execution.
-This engine simulates order execution using live market prices from Zerodha.
+This engine simulates order execution using live market prices.
 NO REAL ORDERS ARE PLACED - this is for practice trading only.
 """
 
@@ -12,7 +12,7 @@ from app.models.paper_order import PaperOrder, OrderType, OrderSide, OrderStatus
 from app.models.paper_position import PaperPosition
 from app.models.wallet import Wallet
 from app.schemas.paper_trading import OrderCreate
-from app.services.zerodha_service import get_zerodha_service
+from app.services.market_data_service import get_market_data_service
 from app.utils.logger import setup_logger
 from app.config import settings
 
@@ -39,7 +39,7 @@ class PaperTradingEngine:
             db: Database session
         """
         self.db = db
-        self.zerodha = get_zerodha_service()
+        self.market_data = get_market_data_service()
     
     def place_order(self, user_id: int, order_data: OrderCreate) -> PaperOrder:
         """
@@ -212,10 +212,10 @@ class PaperTradingEngine:
         try:
             # For INDEX, use NSE
             if instrument_type == InstrumentType.INDEX:
-                price = self.zerodha.get_current_price(f"NSE:{symbol}")
+                price = self.market_data.get_current_price(f"NSE:{symbol}")
             else:
                 # For options, use NFO
-                price = self.zerodha.get_current_price(f"NFO:{symbol}")
+                price = self.market_data.get_current_price(f"NFO:{symbol}")
             
             return price
         except Exception as e:

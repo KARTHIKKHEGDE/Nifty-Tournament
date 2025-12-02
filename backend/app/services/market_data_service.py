@@ -1,5 +1,5 @@
 """
-Zerodha service for market data integration.
+Market data service for live trading data integration.
 This service fetches MARKET DATA ONLY - NO order placement.
 """
 
@@ -13,9 +13,9 @@ from app.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-class ZerodhaService:
+class MarketDataService:
     """
-    Service for Zerodha Kite Connect API integration.
+    Service for Market Data API integration.
     
     IMPORTANT: This service is used for MARKET DATA ONLY.
     NO order placement methods are implemented.
@@ -23,25 +23,25 @@ class ZerodhaService:
     
     def __init__(self, api_key: Optional[str] = None, access_token: Optional[str] = None):
         """
-        Initialize Zerodha service.
+        Initialize market data service.
         
         Args:
-            api_key: Zerodha API key (defaults to settings)
-            access_token: Zerodha access token (optional, defaults to settings)
+            api_key: Market API key (defaults to settings)
+            access_token: Market API access token (optional, defaults to settings)
         """
-        self.api_key = api_key or settings.ZERODHA_API_KEY
-        self.access_token = access_token or settings.ZERODHA_ACCESS_TOKEN or None
+        self.api_key = api_key or settings.MARKET_API_KEY
+        self.access_token = access_token or settings.MARKET_ACCESS_TOKEN or None
         self.kite = KiteConnect(api_key=self.api_key)
         
         if self.access_token:
             self.kite.set_access_token(self.access_token)
-            logger.info("Zerodha service initialized with access token")
+            logger.info("Market data service initialized with access token")
         else:
-            logger.info("Zerodha service initialized without access token")
+            logger.info("Market data service initialized without access token")
     
     def get_login_url(self) -> str:
         """
-        Get Zerodha login URL for OAuth authentication.
+        Get market data API login URL for OAuth authentication.
         
         Returns:
             Login URL string
@@ -61,7 +61,7 @@ class ZerodhaService:
         try:
             data = self.kite.generate_session(
                 request_token,
-                api_secret=settings.ZERODHA_API_SECRET
+                api_secret=settings.MARKET_API_SECRET
             )
             self.access_token = data["access_token"]
             self.kite.set_access_token(self.access_token)
@@ -283,7 +283,7 @@ class ZerodhaService:
                     if expiry_matches(inst['expiry'], expiry_date)
                 ]
             
-            # Get quotes for all options in batches of 500 (Zerodha limit)
+            # Get quotes for all options in batches of 500 (API rate limit)
             instrument_keys = [f"NFO:{inst['tradingsymbol']}" for inst in options]
             quotes = {}
             
@@ -354,17 +354,17 @@ class ZerodhaService:
 
 
 # Singleton instance
-_zerodha_service: Optional[ZerodhaService] = None
+_market_data_service: Optional[MarketDataService] = None
 
 
-def get_zerodha_service() -> ZerodhaService:
+def get_market_data_service() -> MarketDataService:
     """
-    Get or create Zerodha service singleton.
+    Get or create market data service singleton.
     
     Returns:
-        ZerodhaService instance
+        MarketDataService instance
     """
-    global _zerodha_service
-    if _zerodha_service is None:
-        _zerodha_service = ZerodhaService()
-    return _zerodha_service
+    global _market_data_service
+    if _market_data_service is None:
+        _market_data_service = MarketDataService()
+    return _market_data_service

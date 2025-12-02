@@ -11,7 +11,7 @@ from app.models.paper_order import InstrumentType, OrderSide
 
 class PaperPosition(Base):
     """
-    Paper Position model for tracking open positions (Zerodha-style).
+    Paper Position model for tracking open positions.
     Positions are created when orders are executed and represent current holdings.
     """
     
@@ -20,7 +20,7 @@ class PaperPosition(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
-    # Instrument details (Zerodha-style)
+    # Instrument details
     tradingsymbol = Column(String, nullable=False, index=True)  # Full trading symbol (e.g., NIFTY24NOV24000CE)
     symbol = Column(String, nullable=False, index=True)  # Display name
     exchange = Column(String, default="NFO", nullable=False)  # NSE, NFO, BSE
@@ -28,7 +28,7 @@ class PaperPosition(Base):
     instrument_type = Column(SQLEnum(InstrumentType), nullable=False)
     instrument_token = Column(Integer, nullable=True)
     
-    # Position details (Zerodha-style)
+    # Position details
     quantity = Column(Integer, nullable=False)  # Net quantity (buy_qty - sell_qty)
     buy_qty = Column(Integer, default=0, nullable=False)  # Total buy quantity
     sell_qty = Column(Integer, default=0, nullable=False)  # Total sell quantity
@@ -36,7 +36,7 @@ class PaperPosition(Base):
     ltp = Column(Float, nullable=True)  # Last traded price (current market price)
     current_price = Column(Float, nullable=True)  # Alias for ltp
     
-    # P&L tracking (Zerodha-style)
+    # P&L tracking
     pnl = Column(Float, default=0.0, nullable=False)  # Total P&L
     unrealized_pnl = Column(Float, default=0.0, nullable=False)  # Unrealized P&L
     realized_pnl = Column(Float, default=0.0, nullable=False)  # Realized P&L
@@ -81,7 +81,7 @@ class PaperPosition(Base):
     
     def calculate_unrealized_pnl(self) -> float:
         """
-        Calculate unrealized P&L based on Zerodha logic.
+        Calculate unrealized P&L.
         
         For Equity: P&L = (LTP - AvgPrice) × Quantity
         For Options/Futures: P&L = (LTP - AvgPrice) × Multiplier × sign(Quantity)

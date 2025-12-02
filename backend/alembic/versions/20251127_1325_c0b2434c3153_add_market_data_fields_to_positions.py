@@ -1,4 +1,4 @@
-"""add_zerodha_fields_to_positions
+"""add_market_data_fields_to_positions
 
 Revision ID: c0b2434c3153
 Revises: c5537ee07178

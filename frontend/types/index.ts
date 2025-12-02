@@ -237,7 +237,7 @@ export interface OptionData {
     gamma?: number;
     theta?: number;
     vega?: number;
-    instrument_token?: number; // Zerodha instrument token for fetching candle data
+    instrument_token?: number; // Market data instrument token for fetching candle data
 }
 
 export interface OptionsChain {

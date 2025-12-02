@@ -39,7 +39,7 @@ class ZerodhaTickerService:
         self.ticker = KiteTicker(api_key, access_token)
         self._setup_callbacks()
 
-        logger.info("✓ ZerodhaTickerService initialized")
+        logger.info("✓ MarketTickerService initialized")
 
     def _setup_callbacks(self):
         """Setup KiteTicker callbacks"""
@@ -55,7 +55,7 @@ class ZerodhaTickerService:
                 ws.set_mode(ws.MODE_FULL, self.subscribed_tokens)
 
         def on_ticks(ws, ticks):
-            """Handle incoming ticks from Zerodha"""
+            """Handle incoming ticks from market data WebSocket"""
             if not ticks or not self.on_tick_callback:
                 return
 
@@ -124,7 +124,7 @@ class ZerodhaTickerService:
         
         Args:
             symbol: Trading symbol (e.g., "NIFTY 50")
-            instrument_token: Zerodha instrument token
+            instrument_token: Market API instrument token
         """
         # Store mapping
         self.symbol_to_token[symbol] = instrument_token
@@ -203,25 +203,25 @@ class ZerodhaTickerService:
 
 
 # Singleton instance
-_ticker_service: Optional[ZerodhaTickerService] = None
+_ticker_service: Optional[MarketTickerService] = None
 
 
-def get_ticker_service() -> Optional[ZerodhaTickerService]:
-    """Get or create KiteTicker service singleton"""
+def get_ticker_service() -> Optional[MarketTickerService]:
+    """Get or create WebSocket Ticker service singleton"""
     global _ticker_service
     
     # Only create if we have valid credentials (not empty strings)
-    if (not settings.ZERODHA_API_KEY or 
-        not settings.ZERODHA_ACCESS_TOKEN or
-        settings.ZERODHA_API_KEY.strip() == "" or
-        settings.ZERODHA_ACCESS_TOKEN.strip() == ""):
-        logger.warning("Zerodha credentials not configured - KiteTicker not available")
+    if (not settings.MARKET_API_KEY or 
+        not settings.MARKET_ACCESS_TOKEN or
+        settings.MARKET_API_KEY.strip() == "" or
+        settings.MARKET_ACCESS_TOKEN.strip() == ""):
+        logger.warning("Market API credentials not configured - WebSocket Ticker not available")
         return None
     
     if _ticker_service is None:
-        _ticker_service = ZerodhaTickerService(
-            api_key=settings.ZERODHA_API_KEY,
-            access_token=settings.ZERODHA_ACCESS_TOKEN
+        _ticker_service = MarketTickerService(
+            api_key=settings.MARKET_API_KEY,
+            access_token=settings.MARKET_ACCESS_TOKEN
         )
     
     return _ticker_service

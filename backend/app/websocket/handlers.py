@@ -77,7 +77,7 @@ async def handle_subscribe(user_id: int, data: Dict[str, Any]):
     # Subscribe user to symbol in manager
     manager.subscribe(user_id, symbol)
     
-    # Subscribe to Zerodha KiteTicker
+    # Subscribe to WebSocket Ticker
     from app.services.ticker_service import get_ticker_service
     ticker_service = get_ticker_service()
     
@@ -122,7 +122,7 @@ async def handle_unsubscribe(user_id: int, data: Dict[str, Any]):
     # Unsubscribe user from symbol in manager
     manager.unsubscribe(user_id, symbol)
     
-    # Unsubscribe from Zerodha KiteTicker
+    # Unsubscribe from WebSocket Ticker
     from app.services.ticker_service import get_ticker_service
     ticker_service = get_ticker_service()
     
@@ -180,10 +180,10 @@ async def broadcast_price_update(symbol: str, price: float, volume: int = 0, tim
 
 async def broadcast_tick_data(tick_data: Dict[str, Any]):
     """
-    Broadcast tick data from Zerodha to subscribers.
+    Broadcast tick data from market data API to subscribers.
     
     Args:
-        tick_data: Tick data dictionary from Zerodha
+        tick_data: Tick data dictionary from market data API
     """
     symbol = tick_data.get("symbol")
     

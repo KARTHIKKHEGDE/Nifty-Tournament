@@ -42,9 +42,9 @@ export default function Home() {
                 <title>OptionsLeague - Master NIFTY Options Trading | Practice & Win Real Prizes</title>
                 <meta
                     name="description"
-                    content="India's premier options trading platform. Practice with ₹1 Lakh virtual money, compete in tournaments, and win real cash prizes. Real-time NIFTY data powered by Zerodha."
+                    content="India's premier options trading platform. Practice with ₹1 Lakh virtual money, compete in tournaments, and win real cash prizes. Real-time NIFTY market data."
                 />
-                <meta name="keywords" content="options trading, NIFTY options, paper trading, trading tournaments, Zerodha, stock market" />
+                <meta name="keywords" content="options trading, NIFTY options, paper trading, trading tournaments, stock market" />
             </Head>
 
             <div className="min-h-screen relative overflow-hidden bg-gray-950">
@@ -63,12 +63,12 @@ export default function Home() {
                         <div className="flex justify-between items-center h-20">
                             <Link href="/" className="flex items-center gap-3 group">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-blue-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                                    <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl">
+                                    <div className="absolute inset-0 bg-blue-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity pointer-events-none"></div>
+                                    <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl z-10">
                                         <TrendingUp className="w-7 h-7 text-white" />
                                     </div>
                                 </div>
-                                <span className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                                <span className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent relative z-10">
                                     OptionsLeague
                                 </span>
                             </Link>
@@ -121,17 +121,17 @@ export default function Home() {
                                     href="/auth/signup"
                                     className="group relative overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg px-10 py-5 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-blue-500/50 flex items-center justify-center gap-3"
                                 >
-                                    <Rocket className="w-6 h-6 group-hover:translate-y-[-2px] transition-transform" />
-                                    <span>Start Trading Free</span>
-                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                                    <Rocket className="w-6 h-6 group-hover:translate-y-[-2px] transition-transform relative z-10" />
+                                    <span className="relative z-10">Start Trading Free</span>
+                                    <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform relative z-10" />
                                 </Link>
                                 <Link
                                     href="#features"
                                     className="bg-white/5 hover:bg-white/10 border-2 border-white/10 hover:border-white/20 text-white font-bold text-lg px-10 py-5 rounded-2xl transition-all duration-300 transform hover:scale-105 backdrop-blur-sm flex items-center justify-center gap-3"
                                 >
-                                    <Activity className="w-6 h-6" />
-                                    <span>See How It Works</span>
+                                    <Activity className="w-6 h-6 relative z-10" />
+                                    <span className="relative z-10">See How It Works</span>
                                 </Link>
                             </div>
 
@@ -205,7 +205,7 @@ export default function Home() {
                             <FeatureCard
                                 icon={<BarChart3 className="w-12 h-12" />}
                                 title="Live Market Data"
-                                description="Real-time NIFTY options data powered by Zerodha Kite Connect API. Trade with actual market conditions."
+                                description="Real-time NIFTY options data with live market prices. Trade with actual market conditions."
                                 gradient="from-blue-500 to-cyan-500"
                             />
                             <FeatureCard
@@ -331,9 +331,9 @@ export default function Home() {
                                     href="/auth/signup"
                                     className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-xl px-12 py-6 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-blue-500/50"
                                 >
-                                    <Rocket className="w-7 h-7" />
-                                    <span>Create Free Account</span>
-                                    <ArrowRight className="w-7 h-7" />
+                                    <Rocket className="w-6 h-6 relative z-10" />
+                                    <span className="relative z-10">Start Your Journey</span>
+                                    <ArrowRight className="w-6 h-6 relative z-10" />
                                 </Link>
                                 <p className="text-sm text-gray-400 mt-6">
                                     No credit card required • Start with ₹1,00,000 virtual money
@@ -356,7 +356,7 @@ export default function Home() {
                             <div className="text-center text-gray-400">
                                 <p>&copy; 2024 OptionsLeague. All rights reserved.</p>
                                 <p className="text-sm mt-1">
-                                    Paper trading platform for educational purposes. Not affiliated with Zerodha.
+                                    Paper trading platform for educational purposes. Practice trading with virtual money.
                                 </p>
                             </div>
                             <div className="flex gap-6 text-gray-400">
