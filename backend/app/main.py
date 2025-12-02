@@ -15,7 +15,7 @@ from app.websocket.manager import manager
 from app.websocket.handlers import handle_message
 
 # Import API routers
-from app.api import auth, paper_trading, candles, tournaments, admin
+from app.api import auth, paper_trading, candles, tournaments, admin, teams
 
 logger = setup_logger(__name__)
 
@@ -43,6 +43,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(paper_trading.router, prefix="/api/paper-trading", tags=["Paper Trading"])
 app.include_router(candles.router, prefix="/api/candles", tags=["Market Data"])
 app.include_router(tournaments.router, prefix="/api/tournaments", tags=["Tournaments"])
+app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 

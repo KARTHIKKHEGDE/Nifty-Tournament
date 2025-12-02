@@ -98,19 +98,28 @@ export enum TournamentStatus {
     CANCELLED = 'CANCELLED'
 }
 
+export enum TournamentType {
+    SOLO = 'SOLO',
+    TEAM = 'TEAM'
+}
+
 export interface Tournament {
     id: number;
     name: string;
     description?: string;
+    tournament_type: TournamentType;
+    team_size?: number;
     start_date: string;
     end_date: string;
     entry_fee: number;
     prize_pool: number;
     max_participants?: number;
+    current_participants: number;
+    starting_balance: number;
+    registration_deadline: string;
     status: TournamentStatus;
-    rules?: Record<string, any>;
+    rules?: string;
     created_at: string;
-    updated_at: string;
 }
 
 export interface TournamentParticipant {
@@ -136,6 +145,53 @@ export interface TournamentRanking {
     winning_trades: number;
     rank: number;
     updated_at: string;
+}
+
+// Team Types
+export enum MemberRole {
+    CAPTAIN = 'CAPTAIN',
+    MEMBER = 'MEMBER'
+}
+
+export interface TeamMember {
+    id: number;
+    user_id: number;
+    username: string;
+    role: MemberRole;
+    joined_at: string;
+}
+
+export interface Team {
+    id: number;
+    tournament_id: number;
+    name: string;
+    description?: string;
+    captain_id: number;
+    captain_username: string;
+    is_full: boolean;
+    total_members: number;
+    max_members: number;
+    members: TeamMember[];
+    created_at: string;
+}
+
+export interface TeamCreate {
+    tournament_id: number;
+    name: string;
+    description?: string;
+}
+
+export interface TeamLeaderboardEntry {
+    rank: number;
+    team_id: number;
+    team_name: string;
+    total_pnl: number;
+    roi: number;
+    total_trades: number;
+    win_rate: number;
+    current_balance: number;
+    members_count: number;
+    last_updated: string;
 }
 
 // Chart Types

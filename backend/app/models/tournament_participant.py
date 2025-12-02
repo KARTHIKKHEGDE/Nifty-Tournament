@@ -38,7 +38,8 @@ class TournamentParticipant(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     tournament_id = Column(Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)  # Null for team participants
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=True, index=True)  # Null for solo participants
     
     # Payment
     entry_fee_paid = Column(Boolean, default=False, nullable=False)
@@ -59,7 +60,8 @@ class TournamentParticipant(Base):
     
     # Relationships
     tournament = relationship("Tournament", back_populates="participants")
-    user = relationship("User", back_populates="tournament_participants")
+    user = relationship("User", back_populates="tournament_participants", foreign_keys=[user_id])
+    team = relationship("Team", foreign_keys=[team_id])
     
     def __repr__(self):
         return f"<TournamentParticipant(tournament_id={self.tournament_id}, user_id={self.user_id}, pnl={self.total_pnl})>"

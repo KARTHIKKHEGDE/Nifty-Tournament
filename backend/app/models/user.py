@@ -47,6 +47,8 @@ class User(Base):
     paper_positions = relationship("PaperPosition", back_populates="user", cascade="all, delete-orphan")
     tournament_participants = relationship("TournamentParticipant", back_populates="user", cascade="all, delete-orphan")
     settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    team_memberships = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, username={self.username})>"

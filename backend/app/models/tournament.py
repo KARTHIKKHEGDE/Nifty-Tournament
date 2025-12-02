@@ -18,6 +18,12 @@ class TournamentStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class TournamentType(str, enum.Enum):
+    """Tournament type."""
+    SOLO = "SOLO"
+    TEAM = "TEAM"
+
+
 class Tournament(Base):
     """
     Tournament model for trading competitions.
@@ -52,6 +58,8 @@ class Tournament(Base):
     name = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=True)
     status = Column(SQLEnum(TournamentStatus), default=TournamentStatus.UPCOMING, nullable=False, index=True)
+    tournament_type = Column(SQLEnum(TournamentType), default=TournamentType.SOLO, nullable=False, index=True)
+    team_size = Column(Integer, nullable=True)  # Required for TEAM tournaments, null for SOLO
     
     # Financial details
     entry_fee = Column(Float, default=0.0, nullable=False)
@@ -79,6 +87,7 @@ class Tournament(Base):
     participants = relationship("TournamentParticipant", back_populates="tournament", cascade="all, delete-orphan")
     rankings = relationship("TournamentRanking", back_populates="tournament", cascade="all, delete-orphan")
     prize_distributions = relationship("PrizeDistribution", back_populates="tournament", cascade="all, delete-orphan")
+    teams = relationship("Team", back_populates="tournament", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Tournament(id={self.id}, name={self.name}, status={self.status}, prize_pool=₹{self.prize_pool})>"

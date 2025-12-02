@@ -7,7 +7,7 @@ from sqlalchemy import desc
 from typing import List, Optional
 from datetime import datetime
 
-from app.models.tournament import Tournament, TournamentStatus
+from app.models.tournament import Tournament, TournamentStatus, TournamentType
 from app.models.tournament_participant import TournamentParticipant
 from app.models.tournament_ranking import TournamentRanking
 from app.models.user import User
@@ -43,6 +43,8 @@ class TournamentService:
         tournament = Tournament(
             name=tournament_data.name,
             description=tournament_data.description,
+            tournament_type=tournament_data.tournament_type,
+            team_size=tournament_data.team_size,
             entry_fee=tournament_data.entry_fee,
             prize_pool=tournament_data.prize_pool,
             starting_balance=tournament_data.starting_balance,
@@ -89,7 +91,7 @@ class TournamentService:
     
     def join_tournament(self, tournament_id: int, user_id: int) -> TournamentParticipant:
         """
-        Register user for a tournament.
+        Register user for a SOLO tournament.
         
         Args:
             tournament_id: Tournament ID
@@ -104,6 +106,10 @@ class TournamentService:
         tournament = self.db.query(Tournament).filter(Tournament.id == tournament_id).first()
         if not tournament:
             raise ValueError("Tournament not found")
+        
+        # Check if it's a solo tournament
+        if tournament.tournament_type == TournamentType.TEAM:
+            raise ValueError("This is a team tournament. Create or join a team to participate")
         
         if not tournament.is_registration_open:
             raise ValueError("Registration is closed for this tournament")

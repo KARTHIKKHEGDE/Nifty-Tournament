@@ -78,12 +78,16 @@ class AuthService:
         
         # Create user
         hashed_password = AuthService.hash_password(user_data.password)
+        
+        # Check if email is in admin emails list
+        is_admin = user_data.email.lower() in [email.lower() for email in settings.admin_emails_list]
+        
         user = User(
             email=user_data.email,
             username=user_data.username,
             password_hash=hashed_password,
             is_active=True,
-            is_admin=False
+            is_admin=is_admin
         )
         db.add(user)
         db.flush()  # Flush to get user.id

@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { Toaster } from 'react-hot-toast';
 import { useUserStore } from '../stores/userStore';
 import { initializeInstrumentCache } from '../utils/searchUtils';
 import '../styles/globals.css';
@@ -49,5 +50,32 @@ export default function App({ Component, pageProps }: AppProps) {
         );
     }
 
-    return <Component {...pageProps} />;
+    return (
+        <>
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    duration: 4000,
+                    style: {
+                        background: '#1f2937',
+                        color: '#fff',
+                        border: '1px solid #374151',
+                    },
+                    success: {
+                        iconTheme: {
+                            primary: '#10b981',
+                            secondary: '#fff',
+                        },
+                    },
+                    error: {
+                        iconTheme: {
+                            primary: '#ef4444',
+                            secondary: '#fff',
+                        },
+                    },
+                }}
+            />
+            <Component {...pageProps} />
+        </>
+    );
 }

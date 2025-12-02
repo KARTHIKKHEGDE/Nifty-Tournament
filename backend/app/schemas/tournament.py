@@ -5,13 +5,16 @@ Tournament schemas for competitions and leaderboard.
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from datetime import datetime
-from app.models.tournament import TournamentStatus
+from app.models.tournament import TournamentStatus, TournamentType
+from app.models.team_member import MemberRole
 
 
 class TournamentCreate(BaseModel):
     """Schema for creating a tournament."""
     name: str = Field(..., min_length=3, max_length=200)
     description: Optional[str] = None
+    tournament_type: TournamentType = Field(default=TournamentType.SOLO)
+    team_size: Optional[int] = Field(None, gt=1, le=10)  # Required for TEAM tournaments
     entry_fee: float = Field(default=0.0, ge=0)
     prize_pool: float = Field(..., gt=0)
     starting_balance: float = Field(default=100000.0, gt=0)
@@ -20,6 +23,14 @@ class TournamentCreate(BaseModel):
     end_date: datetime
     registration_deadline: datetime
     rules: Optional[str] = None
+    
+    @validator('team_size')
+    def validate_team_size(cls, v, values):
+        """Validate that team_size is provided for TEAM tournaments."""
+        if 'tournament_type' in values and values['tournament_type'] == TournamentType.TEAM:
+            if v is None:
+                raise ValueError('team_size is required for TEAM tournaments')
+        return v
     
     @validator('end_date')
     def validate_end_date(cls, v, values):
@@ -54,6 +65,8 @@ class TournamentResponse(BaseModel):
     name: str
     description: Optional[str]
     status: TournamentStatus
+    tournament_type: TournamentType
+    team_size: Optional[int]
     entry_fee: float
     prize_pool: float
     starting_balance: float
@@ -130,6 +143,78 @@ class PrizeDistributionResponse(BaseModel):
     payment_reference: Optional[str]
     paid_at: Optional[datetime]
     created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+# Team Schemas
+class TeamCreate(BaseModel):
+    """Schema for creating a team."""
+    tournament_id: int
+    name: str = Field(..., min_length=3, max_length=100)
+    description: Optional[str] = None
+
+
+class TeamUpdate(BaseModel):
+    """Schema for updating a team."""
+    name: Optional[str] = Field(None, min_length=3, max_length=100)
+    description: Optional[str] = None
+
+
+class TeamMemberResponse(BaseModel):
+    """Schema for team member response."""
+    id: int
+    user_id: int
+    username: str
+    role: MemberRole
+    joined_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class TeamResponse(BaseModel):
+    """Schema for team response."""
+    id: int
+    tournament_id: int
+    name: str
+    description: Optional[str]
+    captain_id: int
+    captain_username: str
+    is_full: bool
+    total_members: int
+    max_members: int
+    members: List[TeamMemberResponse] = []
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class TeamJoinRequest(BaseModel):
+    """Schema for joining a team."""
+    team_id: int
+
+
+class TeamInviteRequest(BaseModel):
+    """Schema for inviting a user to team."""
+    user_id: int
+    team_id: int
+
+
+class TeamLeaderboardEntry(BaseModel):
+    """Schema for team leaderboard entry."""
+    rank: int
+    team_id: int
+    team_name: str
+    total_pnl: float
+    roi: float
+    total_trades: int
+    win_rate: float
+    current_balance: float
+    members_count: int
+    last_updated: datetime
     
     class Config:
         from_attributes = True

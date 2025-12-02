@@ -7,21 +7,17 @@ A professional paper trading platform for NIFTY options with real-time data inte
 ![Backend](https://img.shields.io/badge/Backend-FastAPI-green)
 ![Database](https://img.shields.io/badge/Database-PostgreSQL-blue)
 
-
-
 docker-compose up -d postgres redis
 
 cd backend; .\venv\Scripts\Activate.ps1; uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-cd frontend 
+cd frontend
 npm run dev
-
-
-
 
 ## ✨ Features
 
 ### 📊 Options Chain
+
 - **Real-time NIFTY options data** from Zerodha API
 - **ATM filtering** - Shows +/- 8 strikes around At-The-Money
 - **Interactive table** with Open Interest, Volume, LTP, and Change %
@@ -29,6 +25,7 @@ npm run dev
 - **Multiple expiry dates** - Switch between different expiry cycles
 
 ### 📈 Advanced Charting
+
 - **Professional KlineChart** with 400 candles
 - **Technical Indicators**:
   - Moving Averages (MA): 5, 10, 20, 30
@@ -42,6 +39,7 @@ npm run dev
 - **Lazy loading** - Load more historical data on scroll
 
 ### 💼 Paper Trading
+
 - **Virtual trading** - Practice without real money
 - **Order types**: Market, Limit, Stop-Loss
 - **Buy/Sell** with quantity and price controls
@@ -49,12 +47,17 @@ npm run dev
 - **Portfolio management**
 
 ### 🏆 Tournaments
-- **Compete with others** in paper trading competitions
-- **Leaderboards** and rankings
-- **Prize pools** and rewards
-- **Real-time updates**
+
+- **Solo Tournaments** - Individual competition against other traders
+- **Team Tournaments** - Form teams and compete together (2-10 players per team)
+- **Leaderboards** and rankings for both solo and team competitions
+- **Prize pools** and rewards - Real money prizes
+- **Real-time updates** and live leaderboards
+- **Team Management** - Create, join, and manage teams
+- **Captain System** - Team captains can register and manage their teams
 
 ### 🔐 Authentication
+
 - **Secure login/signup** with JWT tokens
 - **User profiles** and settings
 - **Session management**
@@ -62,6 +65,7 @@ npm run dev
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js 13** - React framework with SSR
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first styling
@@ -71,6 +75,7 @@ npm run dev
 - **Lucide React** - Beautiful icons
 
 ### Backend
+
 - **FastAPI** - Modern Python web framework
 - **PostgreSQL** - Relational database
 - **SQLAlchemy** - ORM
@@ -89,6 +94,7 @@ npm run dev
 ## 🚀 Quick Start
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <repository-url>
 cd nifty-tournament
@@ -117,6 +123,7 @@ cp .env.example .env
 ```
 
 **Configure `.env`:**
+
 ```env
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/nifty_trading
@@ -131,11 +138,13 @@ ZERODHA_ACCESS_TOKEN=your-access-token
 ```
 
 **Run migrations:**
+
 ```bash
 alembic upgrade head
 ```
 
 **Start backend:**
+
 ```bash
 uvicorn app.main:app --reload
 ```
@@ -156,11 +165,13 @@ cp .env.example .env.local
 ```
 
 **Configure `.env.local`:**
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 **Start frontend:**
+
 ```bash
 npm run dev
 ```
@@ -207,11 +218,13 @@ Frontend will run on `http://localhost:3000`
 ### Zerodha API Setup
 
 1. **Get API Credentials**:
+
    - Visit [Kite Connect](https://kite.trade/)
    - Create an app
    - Note your API Key and Secret
 
 2. **Generate Access Token**:
+
    ```bash
    # Run the auth script
    python backend/scripts/generate_token.py
@@ -227,6 +240,7 @@ Frontend will run on `http://localhost:3000`
 ### Database Configuration
 
 **PostgreSQL Setup:**
+
 ```bash
 # Create database
 createdb nifty_trading
@@ -269,16 +283,21 @@ nifty-tournament/
 ## 🎯 Key Features Explained
 
 ### ATM Strike Filtering
+
 The platform automatically identifies the At-The-Money (ATM) strike based on the current NIFTY spot price and displays only the most relevant strikes (+/- 8 from ATM).
 
 ### Real-time Data
+
 All options data is fetched from Zerodha's Kite Connect API, ensuring accurate and up-to-date information.
 
 ### Paper Trading
+
 All trades are simulated - no real money is involved. Perfect for learning and practicing options trading strategies.
 
 ### Chart Window
+
 The Exness-style chart window provides a professional trading interface with:
+
 - Full-screen chart view
 - Side-by-side order panel
 - All technical indicators
@@ -289,6 +308,7 @@ The Exness-style chart window provides a professional trading interface with:
 ### Backend Issues
 
 **Database Connection Error:**
+
 ```bash
 # Check PostgreSQL is running
 sudo systemctl status postgresql
@@ -297,6 +317,7 @@ sudo systemctl status postgresql
 ```
 
 **Zerodha API Error:**
+
 ```bash
 # Regenerate access token
 python backend/scripts/generate_token.py
@@ -307,11 +328,13 @@ python backend/scripts/generate_token.py
 ### Frontend Issues
 
 **Chart Not Loading:**
+
 - Check browser console for errors
 - Verify API is running on port 8000
 - Check network tab for failed requests
 
 **Authentication Issues:**
+
 - Clear browser localStorage
 - Check JWT token validity
 - Verify backend is running
@@ -319,6 +342,7 @@ python backend/scripts/generate_token.py
 ## 📝 API Documentation
 
 Once the backend is running, visit:
+
 - **Swagger UI**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 
@@ -350,6 +374,7 @@ This is a **paper trading platform** for educational purposes only. No real mone
 ## 📞 Support
 
 For issues and questions:
+
 - Open an issue on GitHub
 - Check existing documentation
 - Review API docs at `/docs`

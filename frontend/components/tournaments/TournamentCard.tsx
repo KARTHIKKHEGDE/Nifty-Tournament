@@ -1,7 +1,7 @@
 import React from 'react';
-import { Tournament } from '../../types';
+import { Tournament, TournamentType } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Trophy, Users, Calendar, DollarSign, Clock } from 'lucide-react';
+import { Trophy, Users, Calendar, DollarSign, Clock, UserPlus } from 'lucide-react';
 import Button from '../common/Button';
 
 interface TournamentCardProps {
@@ -65,11 +65,26 @@ export default function TournamentCard({
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">{tournament.name}</h3>
                     <p className="text-blue-100 text-sm line-clamp-2">{tournament.description}</p>
+                    
+                    {/* Tournament Type Badge */}
+                    <div className="mt-3 flex items-center gap-2">
+                        {tournament.tournament_type === TournamentType.TEAM ? (
+                            <span className="flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-xs font-semibold text-purple-300">
+                                <UserPlus className="w-3.5 h-3.5" />
+                                Team Tournament ({tournament.team_size} players)
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/20 border border-blue-500/30 rounded-full text-xs font-semibold text-blue-300">
+                                <Users className="w-3.5 h-3.5" />
+                                Solo Tournament
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4">>
                 {/* Prize Pool */}
                 <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
                     <div className="flex items-center gap-3">
@@ -131,17 +146,23 @@ export default function TournamentCard({
                             variant="primary"
                             className="flex-1"
                         >
-                            View Leaderboard
+                            {tournament.tournament_type === TournamentType.TEAM ? 'View Teams' : 'View Leaderboard'}
                         </Button>
                     ) : tournament.status === 'UPCOMING' || tournament.status === 'ACTIVE' ? (
                         <>
                             <Button
-                                onClick={() => onJoin(tournament.id)}
+                                onClick={() => {
+                                    if (tournament.tournament_type === TournamentType.TEAM) {
+                                        onViewDetails(tournament);
+                                    } else {
+                                        onJoin(tournament.id);
+                                    }
+                                }}
                                 variant="success"
                                 className="flex-1"
                                 isLoading={isLoading}
                             >
-                                Join Tournament
+                                {tournament.tournament_type === TournamentType.TEAM ? 'View Teams' : 'Join Tournament'}
                             </Button>
                             <Button
                                 onClick={() => onViewDetails(tournament)}

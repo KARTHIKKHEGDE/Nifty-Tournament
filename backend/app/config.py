@@ -66,6 +66,20 @@ class Settings(BaseSettings):
     MAX_ORDERS_PER_DAY: int = 100
     MIN_ORDER_VALUE: float = 100.0
     
+    # Admin Configuration
+    ADMIN_EMAILS: str = ""  # Comma-separated list of admin emails
+    ADMIN_NOTIFICATION_EMAIL: str = ""  # Email for admin notifications
+    
+    @property
+    def admin_emails_list(self) -> List[str]:
+        """Convert ADMIN_EMAILS string to list."""
+        if not self.ADMIN_EMAILS:
+            return []
+        return [email.strip() for email in self.ADMIN_EMAILS.split(",")]
+    
+    # Analytics
+    ANALYTICS_CACHE_TTL: int = 300  # 5 minutes cache for analytics
+    
     class Config:
         # Use absolute path to .env file in backend directory
         from pathlib import Path
