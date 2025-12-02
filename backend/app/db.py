@@ -46,5 +46,5 @@ def init_db():
     Initialize database by creating all tables.
     This should be called on application startup.
     """
-    from app.models import user, wallet, paper_order, paper_position, tournament, tournament_participant, tournament_ranking, prize_distribution, user_settings
+    from app.models import user, wallet, paper_order, paper_position, tournament, tournament_participant, tournament_ranking, prize_distribution, user_settings, team, team_member, admin_action, notification
     Base.metadata.create_all(bind=engine)

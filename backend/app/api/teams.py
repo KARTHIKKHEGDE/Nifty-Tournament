@@ -15,6 +15,7 @@ from app.services.team_service import TeamService
 from app.api.dependencies import get_current_user
 from app.models.user import User
 from app.models.team_member import MemberRole
+from app.models.tournament import Tournament
 
 router = APIRouter()
 
@@ -93,8 +94,6 @@ async def get_tournament_teams(
     Returns:
         List of teams
     """
-    from app.models.tournament import Tournament
-    
     service = TeamService(db)
     tournament = db.query(Tournament).filter(Tournament.id == tournament_id).first()
     
@@ -153,8 +152,6 @@ async def get_team(
     Returns:
         Team details
     """
-    from app.models.tournament import Tournament
-    
     service = TeamService(db)
     team = service.get_team(team_id)
     
@@ -314,8 +311,6 @@ async def get_my_team(
     Returns:
         Team details or null
     """
-    from app.models.tournament import Tournament
-    
     service = TeamService(db)
     team = service.get_user_team(tournament_id, current_user.id)
     
@@ -349,7 +344,3 @@ async def get_my_team(
         "members": members,
         "created_at": team.created_at
     }
-
-
-# Import Tournament model at module level to avoid circular imports
-from app.models.tournament import Tournament
