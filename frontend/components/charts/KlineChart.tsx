@@ -50,11 +50,12 @@ function KlineChartComponent({
   const [chartReady, setChartReady] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
   const [activeTool, setActiveTool] = useState<
-    'cursor' | 'line' | 'brush' | 'rect' | 'rotRect' | 'trendLine'
+    'cursor' | 'line' | 'brush' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'dateRange' | 'priceRange' | 'datePriceRange'
   >('cursor');
   const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
   const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
   const [showMoreToolsMenu, setShowMoreToolsMenu] = useState(false);
+  const [showAdvancedToolsMenu, setShowAdvancedToolsMenu] = useState(false);
   const [showScreenshotMenu, setShowScreenshotMenu] = useState(false);
 
   const [selectedOverlay, setSelectedOverlay] = useState<any>(null);
@@ -525,11 +526,48 @@ function KlineChartComponent({
         },
       });
     }
+
+    if (tool === 'fibonacci') {
+      chartInstance.current.createOverlay({
+        name: 'fibonacciRetracement',
+        groupId: 'drawing',
+        mode: 'normal',
+        styles: {
+          line: {
+            color: '#00baff',
+            size: 1,
+            style: 'dashed',
+          },
+        },
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'fibonacciRetracement',
+              groupId: 'drawing',
+              points: event.overlay.points,
+              styles: { line: { color: '#00baff', size: 1, style: 'dashed' } },
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
   };
 
   const handleToolClick = (tool: typeof activeTool) => {
     setActiveTool(tool);
     setShowMoreToolsMenu(false);
+    setShowAdvancedToolsMenu(false);
 
     if (tool === 'cursor') {
       setSelectedOverlay(null);
@@ -819,7 +857,7 @@ function KlineChartComponent({
               }`}
             title="More Tools"
           >
-            {/* Icon: grid/more tools icon */}
+            {/* Icon: brush icon */}
             <svg
               width="18"
               height="18"
@@ -827,11 +865,11 @@ function KlineChartComponent({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
+              <path d="M9.06 11.9l8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" />
+              <path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" />
             </svg>
           </button>
 
@@ -860,6 +898,122 @@ function KlineChartComponent({
                 className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white"
               >
                 Free Brush
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Advanced Tools Menu Button (Fibonacci, etc.) */}
+        <div className="relative">
+          <button
+            onClick={() => setShowAdvancedToolsMenu((prev) => !prev)}
+            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
+              activeTool === 'fibonacci' ||
+              activeTool === 'longPosition' ||
+              activeTool === 'shortPosition' ||
+              activeTool === 'dateRange' ||
+              activeTool === 'priceRange' ||
+              activeTool === 'datePriceRange'
+                ? 'bg-[#2a2e39] text-white'
+                : 'text-[#787b86] hover:bg-[#1e222d]'
+            }`}
+            title="Advanced Tools"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
+          </button>
+
+          {showAdvancedToolsMenu && (
+            <div className="absolute left-11 top-0 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg z-50 py-1 w-56">
+              <button
+                onClick={() => handleToolClick('fibonacci')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="20" x2="21" y2="20" />
+                  <line x1="3" y1="16" x2="21" y2="16" opacity="0.7" />
+                  <line x1="3" y1="12" x2="21" y2="12" opacity="0.7" />
+                  <line x1="3" y1="8" x2="21" y2="8" opacity="0.7" />
+                  <line x1="3" y1="4" x2="21" y2="4" />
+                  <line x1="3" y1="4" x2="3" y2="20" strokeWidth="2.5" />
+                </svg>
+                <span>Fibonacci Retracement</span>
+              </button>
+              <button
+                onClick={() => handleToolClick('longPosition')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12h5" />
+                  <circle cx="10" cy="12" r="2" fill="currentColor" />
+                  <path d="M12 12h9" />
+                  <path d="M3 18h5" />
+                  <circle cx="10" cy="18" r="2" fill="currentColor" />
+                  <path d="M12 18h9" />
+                </svg>
+                <span>Long Position</span>
+              </button>
+              <button
+                onClick={() => handleToolClick('shortPosition')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h5" />
+                  <circle cx="10" cy="6" r="2" fill="currentColor" />
+                  <path d="M12 6h9" />
+                  <path d="M3 12h5" />
+                  <circle cx="10" cy="12" r="2" fill="currentColor" />
+                  <path d="M12 12h9" />
+                </svg>
+                <span>Short Position</span>
+              </button>
+              <button
+                onClick={() => handleToolClick('dateRange')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v8" />
+                  <circle cx="12" cy="10" r="2" fill="currentColor" />
+                  <path d="M12 12v10" />
+                  <path d="M6 12h12" />
+                </svg>
+                <span>Date Range</span>
+              </button>
+              <button
+                onClick={() => handleToolClick('priceRange')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12h8" />
+                  <circle cx="11" cy="12" r="2" fill="currentColor" />
+                  <path d="M13 12h8" />
+                  <path d="M12 3v18" />
+                </svg>
+                <span>Price Range</span>
+              </button>
+              <button
+                onClick={() => handleToolClick('datePriceRange')}
+                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="M15 3v18" />
+                  <path d="M3 9h18" />
+                  <path d="M3 15h18" />
+                </svg>
+                <span>Date and Price Range</span>
               </button>
             </div>
           )}
