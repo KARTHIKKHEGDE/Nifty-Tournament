@@ -26,6 +26,7 @@ interface KlineChartProps {
   isNiftyChart?: boolean;
   onTimeframeChange?: (timeframe: string) => void;
   currentTimeframe?: string;
+  instrumentToken?: number;
 }
 
 function KlineChartComponent({
@@ -37,6 +38,7 @@ function KlineChartComponent({
   isNiftyChart = false,
   onTimeframeChange,
   currentTimeframe,
+  instrumentToken,
 }: KlineChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<any>(null);
@@ -56,6 +58,10 @@ function KlineChartComponent({
   const [showScreenshotMenu, setShowScreenshotMenu] = useState(false);
 
   const [selectedOverlay, setSelectedOverlay] = useState<any>(null);
+  const [overlayHistory, setOverlayHistory] = useState<string[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const overlayDataRef = useRef<Map<string, any>>(new Map()); // Current overlays on chart
+  const overlayDataStore = useRef<Map<string, any>>(new Map()); // Permanent storage for all overlay data
 
   // Sync timeframe from parent
   useEffect(() => {
@@ -287,6 +293,10 @@ function KlineChartComponent({
 
           setChartReady(true);
 
+          // Initialize overlay history with empty state
+          setOverlayHistory([[]]);
+          setHistoryIndex(0);
+
           if (onLoadMore) {
             chartInstance.current.setLoadMoreDataCallback(
               ({ timestamp }: { timestamp: number }) => {
@@ -374,10 +384,19 @@ function KlineChartComponent({
           },
         },
         onDrawEnd: (event: any) => {
-          if (event?.overlay) {
+          if (event?.overlay?.id) {
             setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'segment',
+              groupId: 'drawing',
+              points: event.overlay.points,
+              styles: { line: { color: '#03a9f4', size: 1.4 } },
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
           }
           setActiveTool('cursor');
+          saveOverlayState();
         },
         onSelected: (event: any) => {
           if (event?.overlay) setSelectedOverlay(event.overlay);
@@ -400,10 +419,19 @@ function KlineChartComponent({
           },
         },
         onDrawEnd: (event: any) => {
-          if (event?.overlay) {
+          if (event?.overlay?.id) {
             setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'freeBrush',
+              groupId: 'drawing',
+              points: event.overlay.points,
+              styles: { line: { color: '#fbc02d', size: 1.6 } },
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
           }
           setActiveTool('cursor');
+          saveOverlayState();
         },
         onSelected: (event: any) => {
           if (event?.overlay) setSelectedOverlay(event.overlay);
@@ -420,10 +448,18 @@ function KlineChartComponent({
         groupId: 'drawing',
         mode: 'normal',
         onDrawEnd: (event: any) => {
-          if (event?.overlay) {
+          if (event?.overlay?.id) {
             setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'rectBox',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
           }
           setActiveTool('cursor');
+          saveOverlayState();
         },
         onSelected: (event: any) => {
           if (event?.overlay) setSelectedOverlay(event.overlay);
@@ -440,8 +476,18 @@ function KlineChartComponent({
         groupId: 'drawing',
         mode: 'normal',
         onDrawEnd: (event: any) => {
-          if (event?.overlay) setSelectedOverlay(event.overlay);
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'rotatedRect',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
           setActiveTool('cursor');
+          saveOverlayState();
         },
         onSelected: (event: any) => {
           if (event?.overlay) setSelectedOverlay(event.overlay);
@@ -458,8 +504,18 @@ function KlineChartComponent({
         groupId: 'drawing',
         mode: 'normal',
         onDrawEnd: (event: any) => {
-          if (event?.overlay) setSelectedOverlay(event.overlay);
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'trendLine',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
           setActiveTool('cursor');
+          saveOverlayState();
         },
         onSelected: (event: any) => {
           if (event?.overlay) setSelectedOverlay(event.overlay);
@@ -486,17 +542,191 @@ function KlineChartComponent({
     if (chartInstance.current) {
       chartInstance.current.removeOverlay();
       setSelectedOverlay(null);
+      saveOverlayState();
     }
   };
 
   const handleDeleteSelectedOverlay = () => {
     if (selectedOverlay && chartInstance.current && selectedOverlay.id) {
-      chartInstance.current.removeOverlay(selectedOverlay.id);
+      chartInstance.current.removeOverlay({ id: selectedOverlay.id });
+      // Remove from our tracking (but keep in tempDataStore for potential redo)
+      overlayDataRef.current.delete(selectedOverlay.id);
       setSelectedOverlay(null);
+      saveOverlayState();
     }
   };
 
-  // ESC / Delete
+  const saveOverlayState = () => {
+    if (!chartInstance.current) return;
+    
+    setTimeout(() => {
+      try {
+        // Get current overlay IDs from our ref
+        const currentOverlayIds = Array.from(overlayDataRef.current.keys());
+        
+        // Remove any future states (when adding after undo)
+        const newHistory = overlayHistory.slice(0, historyIndex + 1);
+        newHistory.push([...currentOverlayIds]);
+        
+        setOverlayHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+        
+        console.log('📝 Saved state. Overlays:', currentOverlayIds, 'History length:', newHistory.length, 'Index:', newHistory.length - 1);
+      } catch (error) {
+        console.error('Error saving overlay state:', error);
+      }
+    }, 100);
+  };
+
+  const applyOverlayState = (targetIds: string[]) => {
+    if (!chartInstance.current) return;
+    
+    const currentIds = Array.from(overlayDataRef.current.keys());
+    
+    console.log('🔄 Applying state. Current IDs:', currentIds, 'Target IDs:', targetIds);
+    
+    // First, remove all overlays from chart
+    try {
+      chartInstance.current.removeOverlay();
+    } catch (e) {
+      console.warn('Error removing overlays:', e);
+    }
+    
+    // Clear our tracking of what's currently on the chart
+    overlayDataRef.current.clear();
+    
+    // Then, recreate only the overlays that should exist in target state
+    targetIds.forEach((overlayId: string) => {
+      const overlayData = overlayDataStore.current.get(overlayId);
+      if (overlayData) {
+        try {
+          chartInstance.current.createOverlay(overlayData);
+          overlayDataRef.current.set(overlayId, overlayData);
+          console.log('✅ Recreated overlay:', overlayId);
+        } catch (e) {
+          console.warn('❌ Failed to recreate overlay:', overlayId, e);
+        }
+      } else {
+        console.warn('⚠️ No data found for overlay:', overlayId);
+      }
+    });
+  };
+
+  const handleUndo = () => {
+    if (historyIndex <= 0 || !chartInstance.current) {
+      console.log('⚠️ Cannot undo: historyIndex =', historyIndex);
+      return;
+    }
+    
+    const newIndex = historyIndex - 1;
+    const targetState = overlayHistory[newIndex];
+    
+    console.log('⬅️ UNDO: index', historyIndex, '→', newIndex);
+    
+    applyOverlayState(targetState);
+    setHistoryIndex(newIndex);
+    setSelectedOverlay(null);
+  };
+
+  const handleRedo = () => {
+    if (historyIndex >= overlayHistory.length - 1 || !chartInstance.current) {
+      console.log('⚠️ Cannot redo: historyIndex =', historyIndex, 'history length =', overlayHistory.length);
+      return;
+    }
+    
+    const newIndex = historyIndex + 1;
+    const targetState = overlayHistory[newIndex];
+    
+    console.log('➡️ REDO: index', historyIndex, '→', newIndex);
+    
+    applyOverlayState(targetState);
+    setHistoryIndex(newIndex);
+    setSelectedOverlay(null);
+  };
+
+  const handleOpenInNewTab = () => {
+    if (!instrumentToken) {
+      console.warn('⚠️ Cannot open chart: instrument token not provided');
+      return;
+    }
+
+    const params = new URLSearchParams({
+      symbol: symbol,
+      instrument_token: instrumentToken.toString(),
+      timeframe: selectedTimeframe,
+    });
+
+    const url = `/dashboard/chart?${params.toString()}`;
+    console.log('📊 Opening chart in new tab:', url);
+
+    const newWindow = window.open(url, '_blank', 'width=1400,height=900');
+
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.warn('⚠️ Popup blocked! Opening in same tab instead');
+      window.location.href = url;
+    } else {
+      console.log('✅ Chart window opened successfully');
+    }
+  };
+
+  const handleSaveChartImage = () => {
+    if (!chartInstance.current) return;
+    
+    try {
+      // Get the chart image as a data URL
+      const imageUrl = chartInstance.current.getConvertPictureUrl(true, 'png', '#131722');
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `${symbol}_chart_${new Date().toISOString().slice(0, 10)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setShowScreenshotMenu(false);
+    } catch (error) {
+      console.error('Error saving chart image:', error);
+    }
+  };
+
+  const handleCopyChartImage = async () => {
+    if (!chartInstance.current) return;
+    
+    try {
+      // Get the chart image as a data URL
+      const imageUrl = chartInstance.current.getConvertPictureUrl(true, 'png', '#131722');
+      
+      // Convert data URL to blob
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Copy to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ]);
+      
+      setShowScreenshotMenu(false);
+      
+      // Optional: Show success message
+      console.log('Chart image copied to clipboard');
+    } catch (error) {
+      console.error('Error copying chart image:', error);
+      // Fallback: try to copy the data URL as text
+      try {
+        const imageUrl = chartInstance.current.getConvertPictureUrl(true, 'png', '#131722');
+        await navigator.clipboard.writeText(imageUrl);
+        console.log('Chart image URL copied to clipboard');
+        setShowScreenshotMenu(false);
+      } catch (fallbackError) {
+        console.error('Fallback copy also failed:', fallbackError);
+      }
+    }
+  };
+
+  // ESC / Delete / Undo / Redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -511,11 +741,23 @@ function KlineChartComponent({
         e.preventDefault();
         handleDeleteSelectedOverlay();
       }
+
+      // Ctrl+Z for Undo
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+
+      // Ctrl+Y or Ctrl+Shift+Z for Redo
+      if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+        e.preventDefault();
+        handleRedo();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedOverlay]);
+  }, [selectedOverlay, historyIndex, overlayHistory]);
 
   const isPriceUp = priceChange >= 0;
 
@@ -818,20 +1060,44 @@ function KlineChartComponent({
             )}
           </div>
 
-          {/* Undo / Redo (UI only now) */}
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+          {/* Undo / Redo */}
+          <button 
+            onClick={handleUndo}
+            disabled={historyIndex <= 0}
+            className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Undo (Ctrl+Z)"
+          >
             <Undo className="w-4 h-4" />
           </button>
-          <button className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
+          <button 
+            onClick={handleRedo}
+            disabled={historyIndex >= overlayHistory.length - 1}
+            className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Redo (Ctrl+Y)"
+          >
             <Redo className="w-4 h-4" />
           </button>
         </div>
 
         {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Fullscreen placeholder */}
-          <button className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors">
-            <Square className="w-4 h-4" />
+          {/* Fullscreen / Open in New Tab */}
+          <button 
+            onClick={handleOpenInNewTab}
+            className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
+            title="Open in new tab"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <rect x="5" y="5" width="14" height="14" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 5 L19 5 L19 12" strokeLinecap="round" strokeLinejoin="round" />
+              <line x1="19" y1="5" x2="13" y2="11" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
 
           {/* Screenshot Menu */}
@@ -864,11 +1130,7 @@ function KlineChartComponent({
             {showScreenshotMenu && (
               <div className="absolute right-0 top-10 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg z-50 py-1 w-52">
                 <button
-                  onClick={() => {
-                    // TODO: Implement save chart image functionality
-                    console.log('Save chart image');
-                    setShowScreenshotMenu(false);
-                  }}
+                  onClick={handleSaveChartImage}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-[#2a2e39] text-white flex items-center gap-3"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -877,11 +1139,7 @@ function KlineChartComponent({
                   Save chart image
                 </button>
                 <button
-                  onClick={() => {
-                    // TODO: Implement copy chart image functionality
-                    console.log('Copy chart image');
-                    setShowScreenshotMenu(false);
-                  }}
+                  onClick={handleCopyChartImage}
                   className="w-full px-4 py-2 text-left text-sm hover:bg-[#2a2e39] text-white flex items-center gap-3"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

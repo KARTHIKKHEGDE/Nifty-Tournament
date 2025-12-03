@@ -220,6 +220,7 @@ export default function DashboardHome() {
                                     height="100%"
                                     onTimeframeChange={handleTimeframeChange}
                                     currentTimeframe={currentTimeframe}
+                                    instrumentToken={selectedSymbol.instrumentToken}
                                 />
                             )
                         ) : (
