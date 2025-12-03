@@ -205,4 +205,118 @@ export function registerCustomOverlays(klinecharts: any) {
       return [];
     },
   });
+
+  // ============================================================
+  // 4) MULTI-POINT TREND LINE (trendLine)
+  // ============================================================
+  registerOverlay({
+    name: 'trendLine',
+    totalStep: 100, // Allow up to 100 points (effectively unlimited for practical use)
+    needDefaultPointFigure: true, // Show blue circles at each point
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      line: {
+        style: 'solid',
+        size: 2,
+        color: '#2962ff',
+      },
+      point: {
+        backgroundColor: '#2962ff',
+        borderColor: '#ffffff',
+        borderSize: 2,
+        radius: 5,
+        activeBackgroundColor: '#ff6b00',
+        activeBorderColor: '#ffffff',
+        activeBorderSize: 2,
+        activeRadius: 6,
+      },
+    },
+
+    createPointFigures: ({ coordinates, overlay, bounding }: any) => {
+      if (!coordinates || coordinates.length === 0) return [];
+
+      const figures: any[] = [];
+
+      // Draw the main line connecting all points
+      if (coordinates.length >= 2) {
+        figures.push({
+          key: 'trendLine-main',
+          type: 'line',
+          attrs: { coordinates },
+          styles: {
+            style: 'solid',
+            size: 2,
+            color: '#2962ff',
+          },
+        });
+      }
+
+      // Draw control points (circles) at each coordinate
+      coordinates.forEach((point: any, index: number) => {
+        figures.push({
+          key: `trendLine-point-${index}`,
+          type: 'circle',
+          attrs: {
+            x: point.x,
+            y: point.y,
+            r: 5,
+          },
+          styles: {
+            style: 'fill_stroke',
+            color: '#2962ff',
+            borderColor: '#ffffff',
+            borderSize: 2,
+          },
+          ignoreEvent: false, // Allow interaction with points
+        });
+      });
+
+      return figures;
+    },
+
+    // Handle mouse move during drawing to show preview line
+    performEventMoveForDrawing: ({ currentStep, points, performPoint }: any) => {
+      if (!performPoint) return;
+
+      // Update the last point to follow the mouse
+      if (currentStep > 1) {
+        points[points.length - 1] = {
+          timestamp: performPoint.timestamp,
+          dataIndex: performPoint.dataIndex,
+          value: performPoint.value,
+        };
+      }
+    },
+
+    // Handle click to add a new point
+    performEventPressedDrawing: ({ currentStep, points, performPoint, overlay }: any) => {
+      if (!performPoint) return;
+
+      const newPoint = {
+        timestamp: performPoint.timestamp,
+        dataIndex: performPoint.dataIndex,
+        value: performPoint.value,
+      };
+
+      // Add the new point
+      points.push(newPoint);
+
+      // For preview: add another point that will follow the mouse
+      if (currentStep < overlay.totalStep - 1) {
+        points.push({ ...newPoint });
+      }
+
+      return true; // Continue drawing
+    },
+
+    // Optional: Handle double-click to finish drawing
+    onDoubleClick: ({ overlay, chart }: any) => {
+      // Remove the last preview point
+      if (overlay.points && overlay.points.length > 1) {
+        overlay.points.pop();
+      }
+      return true; // Finish drawing
+    },
+  });
 }
