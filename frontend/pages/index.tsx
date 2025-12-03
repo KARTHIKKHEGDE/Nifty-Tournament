@@ -39,7 +39,7 @@ export default function Home() {
     return (
         <>
             <Head>
-                <title>OptionsLeague - Master NIFTY Options Trading | Practice & Win Real Prizes</title>
+                <title>ScalarVerse - Master NIFTY Options Trading | Practice & Win Real Prizes</title>
                 <meta
                     name="description"
                     content="India's premier options trading platform. Practice with ₹1 Lakh virtual money, compete in tournaments, and win real cash prizes. Real-time NIFTY market data."
@@ -63,13 +63,13 @@ export default function Home() {
                         <div className="flex justify-between items-center h-20">
                             <Link href="/" className="flex items-center gap-3 group">
                                 <div className="relative">
-                                    <div className="absolute inset-0 bg-blue-500 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity pointer-events-none"></div>
-                                    <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 rounded-xl z-10">
-                                        <TrendingUp className="w-7 h-7 text-white" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl blur-xl opacity-60 group-hover:opacity-90 transition-opacity pointer-events-none"></div>
+                                    <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 p-2.5 rounded-xl shadow-2xl z-10">
+                                        <Sparkles className="w-7 h-7 text-white" />
                                     </div>
                                 </div>
-                                <span className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent relative z-10">
-                                    OptionsLeague
+                                <span className="text-3xl font-black bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-200 bg-clip-text text-transparent relative z-10 tracking-tight" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.08em' }}>
+                                    ScalarVerse
                                 </span>
                             </Link>
                             <div className="flex items-center gap-4">
@@ -348,13 +348,13 @@ export default function Home() {
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                             <div className="flex items-center gap-3">
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-xl">
-                                    <TrendingUp className="w-6 h-6 text-white" />
+                                <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 p-2 rounded-xl shadow-lg">
+                                    <Sparkles className="w-6 h-6 text-white" />
                                 </div>
-                                <span className="text-xl font-bold text-white">OptionsLeague</span>
+                                <span className="text-xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.05em' }}>ScalarVerse</span>
                             </div>
                             <div className="text-center text-gray-400">
-                                <p>&copy; 2024 OptionsLeague. All rights reserved.</p>
+                                <p>&copy; 2024 ScalarVerse. All rights reserved.</p>
                                 <p className="text-sm mt-1">
                                     Paper trading platform for educational purposes. Practice trading with virtual money.
                                 </p>

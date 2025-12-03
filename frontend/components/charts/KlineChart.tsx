@@ -16,6 +16,7 @@ import {
   Square,
 } from 'lucide-react';
 import { registerCustomOverlays } from '../../utils/klineOverlays';
+import { customATRIndicator, toggleIndicator as toggleChartIndicator } from '../../utils/indicatorUtils';
 
 interface KlineChartProps {
   data: CandleData[];
@@ -89,50 +90,8 @@ function KlineChartComponent({
         // Register our custom overlays (brush, rect, rotated rect)
         registerCustomOverlays(klinecharts);
 
-        // Custom ATR indicator (your logic)
-        registerIndicator({
-          name: 'ATR',
-          shortName: 'ATR',
-          calcParams: [14],
-          figures: [{ key: 'atr', title: 'ATR: ', type: 'line' }],
-          calc: (dataList: any[], indicator: any) => {
-            const params = indicator.calcParams;
-            const period = params[0];
-            const result: any[] = [];
-            const trList: number[] = [];
-
-            dataList.forEach((kLineData, i) => {
-              const prevClose =
-                i > 0 ? dataList[i - 1].close : kLineData.open;
-              const high = kLineData.high;
-              const low = kLineData.low;
-
-              const tr = Math.max(
-                high - low,
-                Math.abs(high - prevClose),
-                Math.abs(low - prevClose)
-              );
-              trList.push(tr);
-
-              let atr;
-              if (i >= period - 1) {
-                if (i === period - 1) {
-                  let sum = 0;
-                  for (let j = 0; j < period; j++) {
-                    sum += trList[j];
-                  }
-                  atr = sum / period;
-                } else {
-                  const prevAtr = result[i - 1].atr;
-                  atr = (prevAtr * (period - 1) + tr) / period;
-                }
-              }
-
-              result.push({ atr });
-            });
-            return result;
-          },
-        });
+        // Register custom ATR indicator
+        registerIndicator(customATRIndicator);
 
         disposeFunc = dispose;
 
@@ -383,141 +342,15 @@ function KlineChartComponent({
     }
   }, [data, chartReady]);
 
-  // Indicator toggle (same as your logic)
+  // Indicator toggle - uses utility function
   const toggleIndicator = (indicatorName: string) => {
-    if (!chartInstance.current) return;
-
-    let paneId = 'candle_pane';
-    let isOverlay = true;
-    let calcParams: number[] = [];
-
-    switch (indicatorName) {
-      // Trend
-      case 'MA':
-        calcParams = [5, 10, 20, 60];
-        isOverlay = true;
-        break;
-      case 'EMA':
-        calcParams = [6, 12, 26];
-        isOverlay = true;
-        break;
-      case 'SMA':
-        calcParams = [12, 26];
-        isOverlay = true;
-        break;
-      case 'WMA':
-        calcParams = [12, 26];
-        isOverlay = true;
-        break;
-      case 'BBI':
-        calcParams = [3, 6, 12, 24];
-        isOverlay = true;
-        break;
-      case 'BOLL':
-        calcParams = [20, 2];
-        isOverlay = true;
-        break;
-      case 'SAR':
-        calcParams = [2, 2, 20];
-        isOverlay = true;
-        break;
-      case 'ICHIMOKU':
-        calcParams = [26, 9, 52];
-        isOverlay = true;
-        break;
-
-      // Momentum
-      case 'MACD':
-        calcParams = [12, 26, 9];
-        isOverlay = false;
-        paneId = 'macd_pane';
-        break;
-      case 'KDJ':
-        calcParams = [9, 3, 3];
-        isOverlay = false;
-        paneId = 'kdj_pane';
-        break;
-      case 'RSI':
-        calcParams = [6, 12, 24];
-        isOverlay = false;
-        paneId = 'rsi_pane';
-        break;
-      case 'WR':
-        calcParams = [6, 10, 14];
-        isOverlay = false;
-        paneId = 'wr_pane';
-        break;
-      case 'ROC':
-        calcParams = [12, 6];
-        isOverlay = false;
-        paneId = 'roc_pane';
-        break;
-      case 'CCI':
-        calcParams = [13];
-        isOverlay = false;
-        paneId = 'cci_pane';
-        break;
-      case 'TRIX':
-        calcParams = [12, 9];
-        isOverlay = false;
-        paneId = 'trix_pane';
-        break;
-
-      // Volume
-      case 'VOL':
-        calcParams = [5, 10, 20];
-        isOverlay = false;
-        paneId = 'volume_pane';
-        break;
-      case 'OBV':
-        calcParams = [30];
-        isOverlay = false;
-        paneId = 'obv_pane';
-        break;
-
-      // Volatility
-      case 'ATR':
-        calcParams = [14];
-        isOverlay = false;
-        paneId = 'atr_pane';
-        break;
-      case 'BIAS':
-        calcParams = [6, 12, 24];
-        isOverlay = false;
-        paneId = 'bias_pane';
-        break;
-
-      // Market Strength
-      case 'BRAR':
-        calcParams = [26];
-        isOverlay = false;
-        paneId = 'brar_pane';
-        break;
-      case 'VR':
-        calcParams = [26, 6];
-        isOverlay = false;
-        paneId = 'vr_pane';
-        break;
-      case 'PSY':
-        calcParams = [12, 6];
-        isOverlay = false;
-        paneId = 'psy_pane';
-        break;
-    }
-
-    if (activeIndicators.includes(indicatorName)) {
-      chartInstance.current.removeIndicator(paneId, indicatorName);
-      setActiveIndicators(
-        activeIndicators.filter((ind) => ind !== indicatorName)
-      );
-    } else {
-      chartInstance.current.createIndicator(indicatorName, isOverlay, {
-        id: paneId,
-        calcParams,
-      });
-      setActiveIndicators([...activeIndicators, indicatorName]);
-    }
-    setShowIndicatorMenu(false);
+    toggleChartIndicator(
+      chartInstance.current,
+      indicatorName,
+      activeIndicators,
+      setActiveIndicators,
+      setShowIndicatorMenu
+    );
   };
 
   // ============= DRAWING TOOL LOGIC =============
@@ -681,8 +514,8 @@ function KlineChartComponent({
         <button
           onClick={() => handleToolClick('cursor')}
           className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'cursor'
-              ? 'bg-[#2a2e39] text-white'
-              : 'text-[#787b86] hover:bg-[#1e222d]'
+            ? 'bg-[#2a2e39] text-white'
+            : 'text-[#787b86] hover:bg-[#1e222d]'
             }`}
           title="Cursor"
         >
@@ -693,8 +526,8 @@ function KlineChartComponent({
         <button
           onClick={() => handleToolClick('line')}
           className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'line'
-              ? 'bg-[#2a2e39] text-white'
-              : 'text-[#787b86] hover:bg-[#1e222d]'
+            ? 'bg-[#2a2e39] text-white'
+            : 'text-[#787b86] hover:bg-[#1e222d]'
             }`}
           title="Trend Line"
         >
@@ -717,10 +550,10 @@ function KlineChartComponent({
           <button
             onClick={() => setShowBrushMenu((prev) => !prev)}
             className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'brush' ||
-                activeTool === 'rect' ||
-                activeTool === 'rotRect'
-                ? 'bg-[#2a2e39] text-white'
-                : 'text-[#787b86] hover:bg-[#1e222d]'
+              activeTool === 'rect' ||
+              activeTool === 'rotRect'
+              ? 'bg-[#2a2e39] text-white'
+              : 'text-[#787b86] hover:bg-[#1e222d]'
               }`}
             title="Drawing Tools"
           >
@@ -819,8 +652,8 @@ function KlineChartComponent({
                         }
                       }}
                       className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf
-                          ? 'text-[#2962ff] bg-[#2a2e39]'
-                          : 'text-white'
+                        ? 'text-[#2962ff] bg-[#2a2e39]'
+                        : 'text-white'
                         }`}
                     >
                       {tf}
@@ -866,8 +699,8 @@ function KlineChartComponent({
                     key={key}
                     onClick={() => toggleIndicator(key)}
                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
-                        ? 'text-[#2962ff]'
-                        : 'text-white'
+                      ? 'text-[#2962ff]'
+                      : 'text-white'
                       }`}
                   >
                     {label}
@@ -893,8 +726,8 @@ function KlineChartComponent({
                     key={key}
                     onClick={() => toggleIndicator(key)}
                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
-                        ? 'text-[#2962ff]'
-                        : 'text-white'
+                      ? 'text-[#2962ff]'
+                      : 'text-white'
                       }`}
                   >
                     {key}
@@ -912,8 +745,8 @@ function KlineChartComponent({
                     key={key}
                     onClick={() => toggleIndicator(key)}
                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
-                        ? 'text-[#2962ff]'
-                        : 'text-white'
+                      ? 'text-[#2962ff]'
+                      : 'text-white'
                       }`}
                   >
                     {key}
@@ -931,8 +764,8 @@ function KlineChartComponent({
                     key={key}
                     onClick={() => toggleIndicator(key)}
                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
-                        ? 'text-[#2962ff]'
-                        : 'text-white'
+                      ? 'text-[#2962ff]'
+                      : 'text-white'
                       }`}
                   >
                     {key}
@@ -950,8 +783,8 @@ function KlineChartComponent({
                     key={key}
                     onClick={() => toggleIndicator(key)}
                     className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${activeIndicators.includes(key)
-                        ? 'text-[#2962ff]'
-                        : 'text-white'
+                      ? 'text-[#2962ff]'
+                      : 'text-white'
                       }`}
                   >
                     {key}
@@ -1033,8 +866,8 @@ function KlineChartComponent({
                 onTimeframeChange?.(tf.value);
               }}
               className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${selectedTimeframe === tf.value
-                  ? 'bg-[#2962ff] text-white'
-                  : 'text-[#787b86] hover:text-white hover:bg-[#1e222d]'
+                ? 'bg-[#2962ff] text-white'
+                : 'text-[#787b86] hover:text-white hover:bg-[#1e222d]'
                 }`}
             >
               {tf.label}

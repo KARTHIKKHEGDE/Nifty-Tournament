@@ -2,7 +2,7 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
-    TrendingUp,
+    Sparkles,
     LogOut,
     User,
     ChevronDown,
@@ -35,12 +35,15 @@ export default function MainNavbar() {
         <nav className="bg-[#1a1d23] border-b border-gray-800 h-14 flex items-center px-6 sticky top-0 z-50">
             <div className="flex items-center justify-between w-full">
                 {/* Left: Logo */}
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="bg-blue-600 p-1.5 rounded">
-                        <TrendingUp className="w-5 h-5 text-white" />
+                <Link href="/dashboard" className="flex items-center gap-2.5 group">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg blur-sm opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 p-1.5 rounded-lg">
+                            <Sparkles className="w-5 h-5 text-white" />
+                        </div>
                     </div>
-                    <span className="text-lg font-bold text-white">
-                        NIFTY<span className="font-light text-blue-400">Trader</span>
+                    <span className="text-xl font-black bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-300 bg-clip-text text-transparent tracking-tight" style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.05em' }}>
+                        ScalarVerse
                     </span>
                 </Link>
 
