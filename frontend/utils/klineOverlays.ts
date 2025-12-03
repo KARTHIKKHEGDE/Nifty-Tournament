@@ -511,4 +511,837 @@ export function registerCustomOverlays(klinecharts: any) {
       return figures;
     },
   });
+
+  // ============================================================
+  // 6) LONG POSITION
+  // ============================================================
+  registerOverlay({
+    name: 'longPosition',
+    totalStep: 4, // Entry, Stop Loss, Target
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      line: {
+        style: 'solid',
+        size: 1,
+        color: '#26a69a',
+      },
+      text: {
+        family: 'Arial, sans-serif',
+        size: 11,
+        color: '#ffffff',
+      },
+    },
+
+    createPointFigures: ({ coordinates, bounding, overlay, precision }: any) => {
+      if (!coordinates || coordinates.length < 1) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 1) return [];
+
+      const entry = coordinates[0];
+      const entryPoint = overlay.points[0];
+      const figures: any[] = [];
+
+      // Entry point marker (upward triangle)
+      figures.push({
+        key: 'long-entry-triangle',
+        type: 'polygon',
+        attrs: {
+          coordinates: [
+            { x: entry.x - 6, y: entry.y + 10 },
+            { x: entry.x + 6, y: entry.y + 10 },
+            { x: entry.x, y: entry.y },
+          ],
+        },
+        styles: {
+          style: 'fill',
+          color: '#26a69a',
+        },
+      });
+
+      // Entry control point (draggable circle)
+      figures.push({
+        key: 'long-entry-point',
+        type: 'circle',
+        attrs: {
+          x: entry.x,
+          y: entry.y,
+          r: 5,
+        },
+        styles: {
+          style: 'fill_stroke',
+          color: '#26a69a',
+          borderColor: '#ffffff',
+          borderSize: 2,
+        },
+        ignoreEvent: false,
+      });
+
+      // Entry price label
+      const entryPrice = entryPoint.value?.toFixed(precision?.price || 2) || '0.00';
+      figures.push({
+        key: 'long-entry-label',
+        type: 'text',
+        attrs: {
+          x: entry.x + 10,
+          y: entry.y - 5,
+          text: `LONG ${entryPrice}`,
+          align: 'left',
+          baseline: 'bottom',
+        },
+        styles: {
+          color: '#26a69a',
+          size: 12,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      // If we have stop loss (2nd point)
+      if (coordinates.length >= 2 && overlay.points.length >= 2) {
+        const sl = coordinates[1];
+        const slPoint = overlay.points[1];
+        const lineExtension = 150; // Limited horizontal extension
+        const boxWidth = lineExtension; // Fixed width for all boxes
+        const leftX = entry.x; // Always start from entry point
+        const rightX = entry.x + boxWidth;
+
+        // Light red background for stop loss zone (SL to Entry)
+        figures.push({
+          key: 'long-sl-background',
+          type: 'rect',
+          attrs: {
+            x: leftX,
+            y: Math.min(entry.y, sl.y),
+            width: boxWidth,
+            height: Math.abs(sl.y - entry.y),
+          },
+          styles: {
+            style: 'fill',
+            color: 'rgba(239, 83, 80, 0.12)',
+          },
+        });
+
+        // Stop loss line
+        figures.push({
+          key: 'long-sl-line',
+          type: 'line',
+          attrs: {
+            coordinates: [
+              { x: leftX, y: sl.y },
+              { x: rightX, y: sl.y },
+            ],
+          },
+          styles: {
+            style: 'dashed',
+            size: 1,
+            color: '#ef5350',
+          },
+        });
+
+        // SL control point (draggable circle)
+        figures.push({
+          key: 'long-sl-point',
+          type: 'circle',
+          attrs: {
+            x: sl.x,
+            y: sl.y,
+            r: 5,
+          },
+          styles: {
+            style: 'fill_stroke',
+            color: '#ef5350',
+            borderColor: '#ffffff',
+            borderSize: 2,
+          },
+          ignoreEvent: false,
+        });
+
+        // SL label
+        const slPrice = slPoint.value?.toFixed(precision?.price || 2) || '0.00';
+        figures.push({
+          key: 'long-sl-label',
+          type: 'text',
+          attrs: {
+            x: leftX + 5,
+            y: sl.y - 3,
+            text: `SL ${slPrice}`,
+            align: 'left',
+            baseline: 'bottom',
+          },
+          styles: {
+            color: '#ef5350',
+            size: 11,
+            family: 'Arial, sans-serif',
+            weight: 'normal',
+          },
+        });
+      }
+
+      // If we have target (3rd point)
+      if (coordinates.length >= 3 && overlay.points.length >= 3) {
+        const target = coordinates[2];
+        const targetPoint = overlay.points[2];
+        const lineExtension = 150; // Limited horizontal extension
+        const boxWidth = lineExtension; // Fixed width for all boxes
+        const leftX = entry.x; // Always start from entry point
+        const rightX = entry.x + boxWidth;
+
+        // Light green background for profit zone (Entry to Target)
+        figures.push({
+          key: 'long-target-background',
+          type: 'rect',
+          attrs: {
+            x: leftX,
+            y: Math.min(entry.y, target.y),
+            width: boxWidth,
+            height: Math.abs(target.y - entry.y),
+          },
+          styles: {
+            style: 'fill',
+            color: 'rgba(38, 166, 154, 0.12)',
+          },
+        });
+
+        // Target line
+        figures.push({
+          key: 'long-target-line',
+          type: 'line',
+          attrs: {
+            coordinates: [
+              { x: leftX, y: target.y },
+              { x: rightX, y: target.y },
+            ],
+          },
+          styles: {
+            style: 'dashed',
+            size: 1,
+            color: '#26a69a',
+          },
+        });
+
+        // Target control point (draggable circle)
+        figures.push({
+          key: 'long-target-point',
+          type: 'circle',
+          attrs: {
+            x: target.x,
+            y: target.y,
+            r: 5,
+          },
+          styles: {
+            style: 'fill_stroke',
+            color: '#26a69a',
+            borderColor: '#ffffff',
+            borderSize: 2,
+          },
+          ignoreEvent: false,
+        });
+
+        // Target label
+        const targetPrice = targetPoint.value?.toFixed(precision?.price || 2) || '0.00';
+        figures.push({
+          key: 'long-target-label',
+          type: 'text',
+          attrs: {
+            x: leftX + 5,
+            y: target.y + 3,
+            text: `TARGET ${targetPrice}`,
+            align: 'left',
+            baseline: 'top',
+          },
+          styles: {
+            color: '#26a69a',
+            size: 11,
+            family: 'Arial, sans-serif',
+            weight: 'normal',
+          },
+        });
+      }
+
+      return figures;
+    },
+  });
+
+  // ============================================================
+  // 7) SHORT POSITION
+  // ============================================================
+  registerOverlay({
+    name: 'shortPosition',
+    totalStep: 4, // Entry, Stop Loss, Target
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      line: {
+        style: 'solid',
+        size: 1,
+        color: '#ef5350',
+      },
+      text: {
+        family: 'Arial, sans-serif',
+        size: 11,
+        color: '#ffffff',
+      },
+    },
+
+    createPointFigures: ({ coordinates, bounding, overlay, precision }: any) => {
+      if (!coordinates || coordinates.length < 1) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 1) return [];
+
+      const entry = coordinates[0];
+      const entryPoint = overlay.points[0];
+      const figures: any[] = [];
+
+      // Entry point marker (downward triangle)
+      figures.push({
+        key: 'short-entry-triangle',
+        type: 'polygon',
+        attrs: {
+          coordinates: [
+            { x: entry.x - 6, y: entry.y - 10 },
+            { x: entry.x + 6, y: entry.y - 10 },
+            { x: entry.x, y: entry.y },
+          ],
+        },
+        styles: {
+          style: 'fill',
+          color: '#ef5350',
+        },
+      });
+
+      // Entry control point (draggable circle)
+      figures.push({
+        key: 'short-entry-point',
+        type: 'circle',
+        attrs: {
+          x: entry.x,
+          y: entry.y,
+          r: 5,
+        },
+        styles: {
+          style: 'fill_stroke',
+          color: '#ef5350',
+          borderColor: '#ffffff',
+          borderSize: 2,
+        },
+        ignoreEvent: false,
+      });
+
+      // Entry price label
+      const entryPrice = entryPoint.value?.toFixed(precision?.price || 2) || '0.00';
+      figures.push({
+        key: 'short-entry-label',
+        type: 'text',
+        attrs: {
+          x: entry.x + 10,
+          y: entry.y + 5,
+          text: `SHORT ${entryPrice}`,
+          align: 'left',
+          baseline: 'top',
+        },
+        styles: {
+          color: '#ef5350',
+          size: 12,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      // If we have stop loss (2nd point)
+      if (coordinates.length >= 2 && overlay.points.length >= 2) {
+        const sl = coordinates[1];
+        const slPoint = overlay.points[1];
+        const lineExtension = 150; // Limited horizontal extension
+        const boxWidth = lineExtension; // Fixed width for all boxes
+        const leftX = entry.x; // Always start from entry point
+        const rightX = entry.x + boxWidth;
+
+        // Light green background for stop loss zone (Entry to SL, above entry for short)
+        figures.push({
+          key: 'short-sl-background',
+          type: 'rect',
+          attrs: {
+            x: leftX,
+            y: Math.min(entry.y, sl.y),
+            width: boxWidth,
+            height: Math.abs(sl.y - entry.y),
+          },
+          styles: {
+            style: 'fill',
+            color: 'rgba(38, 166, 154, 0.12)',
+          },
+        });
+
+        // Stop loss line
+        figures.push({
+          key: 'short-sl-line',
+          type: 'line',
+          attrs: {
+            coordinates: [
+              { x: leftX, y: sl.y },
+              { x: rightX, y: sl.y },
+            ],
+          },
+          styles: {
+            style: 'dashed',
+            size: 1,
+            color: '#26a69a',
+          },
+        });
+
+        // SL control point (draggable circle)
+        figures.push({
+          key: 'short-sl-point',
+          type: 'circle',
+          attrs: {
+            x: sl.x,
+            y: sl.y,
+            r: 5,
+          },
+          styles: {
+            style: 'fill_stroke',
+            color: '#26a69a',
+            borderColor: '#ffffff',
+            borderSize: 2,
+          },
+          ignoreEvent: false,
+        });
+
+        // SL label
+        const slPrice = slPoint.value?.toFixed(precision?.price || 2) || '0.00';
+        figures.push({
+          key: 'short-sl-label',
+          type: 'text',
+          attrs: {
+            x: leftX + 5,
+            y: sl.y + 3,
+            text: `SL ${slPrice}`,
+            align: 'left',
+            baseline: 'top',
+          },
+          styles: {
+            color: '#26a69a',
+            size: 11,
+            family: 'Arial, sans-serif',
+            weight: 'normal',
+          },
+        });
+      }
+
+      // If we have target (3rd point)
+      if (coordinates.length >= 3 && overlay.points.length >= 3) {
+        const target = coordinates[2];
+        const targetPoint = overlay.points[2];
+        const lineExtension = 150; // Limited horizontal extension
+        const boxWidth = lineExtension; // Fixed width for all boxes
+        const leftX = entry.x; // Always start from entry point
+        const rightX = entry.x + boxWidth;
+
+        // Light red background for profit zone (Entry to Target, below entry for short)
+        figures.push({
+          key: 'short-target-background',
+          type: 'rect',
+          attrs: {
+            x: leftX,
+            y: Math.min(entry.y, target.y),
+            width: boxWidth,
+            height: Math.abs(target.y - entry.y),
+          },
+          styles: {
+            style: 'fill',
+            color: 'rgba(239, 83, 80, 0.12)',
+          },
+        });
+
+        // Target line
+        figures.push({
+          key: 'short-target-line',
+          type: 'line',
+          attrs: {
+            coordinates: [
+              { x: leftX, y: target.y },
+              { x: rightX, y: target.y },
+            ],
+          },
+          styles: {
+            style: 'dashed',
+            size: 1,
+            color: '#ef5350',
+          },
+        });
+
+        // Target control point (draggable circle)
+        figures.push({
+          key: 'short-target-point',
+          type: 'circle',
+          attrs: {
+            x: target.x,
+            y: target.y,
+            r: 5,
+          },
+          styles: {
+            style: 'fill_stroke',
+            color: '#ef5350',
+            borderColor: '#ffffff',
+            borderSize: 2,
+          },
+          ignoreEvent: false,
+        });
+
+        // Target label
+        const targetPrice = targetPoint.value?.toFixed(precision?.price || 2) || '0.00';
+        figures.push({
+          key: 'short-target-label',
+          type: 'text',
+          attrs: {
+            x: leftX + 5,
+            y: target.y - 3,
+            text: `TARGET ${targetPrice}`,
+            align: 'left',
+            baseline: 'bottom',
+          },
+          styles: {
+            color: '#ef5350',
+            size: 11,
+            family: 'Arial, sans-serif',
+            weight: 'normal',
+          },
+        });
+      }
+
+      return figures;
+    },
+  });
+
+  // ============================================================
+  // 8) PRICE RANGE
+  // ============================================================
+  registerOverlay({
+    name: 'priceRange',
+    totalStep: 3,
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      line: {
+        style: 'solid',
+        size: 1,
+        color: '#2962ff',
+      },
+      polygon: {
+        style: 'fill',
+        color: 'rgba(41, 98, 255, 0.1)',
+      },
+    },
+
+    createPointFigures: ({ coordinates, bounding, overlay, precision }: any) => {
+      if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+      const p1 = coordinates[0];
+      const p2 = coordinates[1];
+      const point1 = overlay.points[0];
+      const point2 = overlay.points[1];
+
+      const figures: any[] = [];
+
+      const topY = Math.min(p1.y, p2.y);
+      const bottomY = Math.max(p1.y, p2.y);
+      const topValue = Math.max(point1.value, point2.value);
+      const bottomValue = Math.min(point1.value, point2.value);
+
+      const chartLeft = bounding?.left || Math.min(p1.x, p2.x) - 50;
+      const chartRight = bounding?.width ? chartLeft + bounding.width : Math.max(p1.x, p2.x) + 50;
+
+      // Filled rectangle
+      figures.push({
+        key: 'priceRange-fill',
+        type: 'rect',
+        attrs: {
+          x: chartLeft,
+          y: topY,
+          width: chartRight - chartLeft,
+          height: bottomY - topY,
+        },
+        styles: {
+          style: 'fill',
+          color: 'rgba(41, 98, 255, 0.08)',
+        },
+      });
+
+      // Top line
+      figures.push({
+        key: 'priceRange-top',
+        type: 'line',
+        attrs: {
+          coordinates: [
+            { x: chartLeft, y: topY },
+            { x: chartRight, y: topY },
+          ],
+        },
+        styles: {
+          style: 'solid',
+          size: 1,
+          color: '#2962ff',
+        },
+      });
+
+      // Bottom line
+      figures.push({
+        key: 'priceRange-bottom',
+        type: 'line',
+        attrs: {
+          coordinates: [
+            { x: chartLeft, y: bottomY },
+            { x: chartRight, y: bottomY },
+          ],
+        },
+        styles: {
+          style: 'solid',
+          size: 1,
+          color: '#2962ff',
+        },
+      });
+
+      // Price difference label
+      const priceDiff = (topValue - bottomValue).toFixed(precision?.price || 2);
+      const percentage = (((topValue - bottomValue) / bottomValue) * 100).toFixed(2);
+      
+      figures.push({
+        key: 'priceRange-label',
+        type: 'text',
+        attrs: {
+          x: chartLeft + 10,
+          y: topY + (bottomY - topY) / 2,
+          text: `${priceDiff} (${percentage}%)`,
+          align: 'left',
+          baseline: 'middle',
+        },
+        styles: {
+          color: '#2962ff',
+          size: 12,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      return figures;
+    },
+  });
+
+  // ============================================================
+  // 9) DATE RANGE
+  // ============================================================
+  registerOverlay({
+    name: 'dateRange',
+    totalStep: 3,
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      line: {
+        style: 'solid',
+        size: 1,
+        color: '#9c27b0',
+      },
+      polygon: {
+        style: 'fill',
+        color: 'rgba(156, 39, 176, 0.1)',
+      },
+    },
+
+    createPointFigures: ({ coordinates, bounding, overlay, precision }: any) => {
+      if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+      const p1 = coordinates[0];
+      const p2 = coordinates[1];
+      const point1 = overlay.points[0];
+      const point2 = overlay.points[1];
+
+      const figures: any[] = [];
+
+      const leftX = Math.min(p1.x, p2.x);
+      const rightX = Math.max(p1.x, p2.x);
+
+      const chartTop = bounding?.top || 0;
+      const chartBottom = bounding?.height ? chartTop + bounding.height : 500;
+
+      // Filled rectangle
+      figures.push({
+        key: 'dateRange-fill',
+        type: 'rect',
+        attrs: {
+          x: leftX,
+          y: chartTop,
+          width: rightX - leftX,
+          height: chartBottom - chartTop,
+        },
+        styles: {
+          style: 'fill',
+          color: 'rgba(156, 39, 176, 0.08)',
+        },
+      });
+
+      // Left line
+      figures.push({
+        key: 'dateRange-left',
+        type: 'line',
+        attrs: {
+          coordinates: [
+            { x: leftX, y: chartTop },
+            { x: leftX, y: chartBottom },
+          ],
+        },
+        styles: {
+          style: 'solid',
+          size: 1,
+          color: '#9c27b0',
+        },
+      });
+
+      // Right line
+      figures.push({
+        key: 'dateRange-right',
+        type: 'line',
+        attrs: {
+          coordinates: [
+            { x: rightX, y: chartTop },
+            { x: rightX, y: chartBottom },
+          ],
+        },
+        styles: {
+          style: 'solid',
+          size: 1,
+          color: '#9c27b0',
+        },
+      });
+
+      // Calculate time difference in bars
+      const barDiff = Math.abs((point2.dataIndex || 0) - (point1.dataIndex || 0));
+      
+      figures.push({
+        key: 'dateRange-label',
+        type: 'text',
+        attrs: {
+          x: leftX + (rightX - leftX) / 2,
+          y: chartTop + 20,
+          text: `${barDiff} bars`,
+          align: 'center',
+          baseline: 'top',
+        },
+        styles: {
+          color: '#9c27b0',
+          size: 12,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      return figures;
+    },
+  });
+
+  // ============================================================
+  // 10) DATE AND PRICE RANGE (Combined Box)
+  // ============================================================
+  registerOverlay({
+    name: 'datePriceRange',
+    totalStep: 3,
+    needDefaultPointFigure: true,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      rect: {
+        style: 'stroke_fill',
+        color: 'rgba(255, 152, 0, 0.08)',
+        borderColor: '#ff9800',
+        borderSize: 1,
+      },
+    },
+
+    createPointFigures: ({ coordinates, bounding, overlay, precision }: any) => {
+      if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+      const p1 = coordinates[0];
+      const p2 = coordinates[1];
+      const point1 = overlay.points[0];
+      const point2 = overlay.points[1];
+
+      const figures: any[] = [];
+
+      const leftX = Math.min(p1.x, p2.x);
+      const rightX = Math.max(p1.x, p2.x);
+      const topY = Math.min(p1.y, p2.y);
+      const bottomY = Math.max(p1.y, p2.y);
+
+      const topValue = Math.max(point1.value, point2.value);
+      const bottomValue = Math.min(point1.value, point2.value);
+
+      // Box
+      figures.push({
+        key: 'datePriceRange-box',
+        type: 'rect',
+        attrs: {
+          x: leftX,
+          y: topY,
+          width: rightX - leftX,
+          height: bottomY - topY,
+        },
+        styles: {
+          style: 'stroke_fill',
+          color: 'rgba(255, 152, 0, 0.08)',
+          borderColor: '#ff9800',
+          borderSize: 1.5,
+        },
+      });
+
+      // Price difference
+      const priceDiff = (topValue - bottomValue).toFixed(precision?.price || 2);
+      const percentage = (((topValue - bottomValue) / bottomValue) * 100).toFixed(2);
+      
+      figures.push({
+        key: 'datePriceRange-price-label',
+        type: 'text',
+        attrs: {
+          x: leftX + 5,
+          y: topY + 5,
+          text: `${priceDiff} (${percentage}%)`,
+          align: 'left',
+          baseline: 'top',
+        },
+        styles: {
+          color: '#ff9800',
+          size: 11,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      // Time difference
+      const barDiff = Math.abs((point2.dataIndex || 0) - (point1.dataIndex || 0));
+      
+      figures.push({
+        key: 'datePriceRange-time-label',
+        type: 'text',
+        attrs: {
+          x: rightX - 5,
+          y: bottomY - 5,
+          text: `${barDiff} bars`,
+          align: 'right',
+          baseline: 'bottom',
+        },
+        styles: {
+          color: '#ff9800',
+          size: 11,
+          family: 'Arial, sans-serif',
+          weight: 'bold',
+        },
+      });
+
+      return figures;
+    },
+  });
 }

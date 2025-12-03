@@ -562,6 +562,146 @@ function KlineChartComponent({
         },
       });
     }
+
+    if (tool === 'longPosition') {
+      chartInstance.current.createOverlay({
+        name: 'longPosition',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'longPosition',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
+
+    if (tool === 'shortPosition') {
+      chartInstance.current.createOverlay({
+        name: 'shortPosition',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'shortPosition',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
+
+    if (tool === 'priceRange') {
+      chartInstance.current.createOverlay({
+        name: 'priceRange',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'priceRange',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
+
+    if (tool === 'dateRange') {
+      chartInstance.current.createOverlay({
+        name: 'dateRange',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'dateRange',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
+
+    if (tool === 'datePriceRange') {
+      chartInstance.current.createOverlay({
+        name: 'datePriceRange',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: (event: any) => {
+          if (event?.overlay?.id) {
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'datePriceRange',
+              groupId: 'drawing',
+              points: event.overlay.points,
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
   };
 
   const handleToolClick = (tool: typeof activeTool) => {
