@@ -50,7 +50,7 @@ function KlineChartComponent({
   const [chartReady, setChartReady] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
   const [activeTool, setActiveTool] = useState<
-    'cursor' | 'line' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'priceRange' | 'datePriceRange'
+    'cursor' | 'line' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'datePriceRange'
   >('cursor');
   const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
   const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
@@ -586,33 +586,7 @@ function KlineChartComponent({
       });
     }
 
-    if (tool === 'priceRange') {
-      chartInstance.current.createOverlay({
-        name: 'priceRange',
-        groupId: 'drawing',
-        mode: 'normal',
-        onDrawEnd: (event: any) => {
-          if (event?.overlay?.id) {
-            setSelectedOverlay(event.overlay);
-            const overlayData = {
-              name: 'priceRange',
-              groupId: 'drawing',
-              points: event.overlay.points,
-            };
-            overlayDataRef.current.set(event.overlay.id, overlayData);
-            overlayDataStore.current.set(event.overlay.id, overlayData);
-          }
-          setActiveTool('cursor');
-          saveOverlayState();
-        },
-        onSelected: (event: any) => {
-          if (event?.overlay) setSelectedOverlay(event.overlay);
-        },
-        onDeselected: () => {
-          setSelectedOverlay(null);
-        },
-      });
-    }
+
 
 
 
@@ -984,7 +958,6 @@ function KlineChartComponent({
             className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'fibonacci' ||
               activeTool === 'longPosition' ||
               activeTool === 'shortPosition' ||
-              activeTool === 'priceRange' ||
               activeTool === 'datePriceRange'
               ? 'bg-[#2a2e39] text-white'
               : 'text-[#787b86] hover:bg-[#1e222d]'
@@ -1051,18 +1024,7 @@ function KlineChartComponent({
                 <span>Short Position</span>
               </button>
 
-              <button
-                onClick={() => handleToolClick('priceRange')}
-                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12h8" />
-                  <circle cx="11" cy="12" r="2" fill="currentColor" />
-                  <path d="M13 12h8" />
-                  <path d="M12 3v18" />
-                </svg>
-                <span>Price Range</span>
-              </button>
+
               <button
                 onClick={() => handleToolClick('datePriceRange')}
                 className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"

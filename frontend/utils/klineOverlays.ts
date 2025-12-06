@@ -625,11 +625,12 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
-  // 6) LONG POSITION (editable)
+  // 6) LONG POSITION (4-point system)
+  // Point 0: Entry Left, Point 1: Entry Right (width), Point 2: SL, Point 3: Target
   // ------------------------------------------------------
   registerOverlay({
     name: 'longPosition',
-    totalStep: 4,
+    totalStep: 5,
     needDefaultPointFigure: true,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
@@ -639,43 +640,51 @@ export function registerCustomOverlays(klinecharts: any) {
       point: { radius: 5 },
     },
 
-    // We intentionally compute a box that extends horizontally to the right from entry.x
     createPointFigures: ({ coordinates, overlay, precision }: any) => {
-      if (!coordinates || coordinates.length < 1) return [];
-      if (!overlay || !overlay.points || overlay.points.length < 1) return [];
-      const entry = coordinates[0];
-      const entryPoint = overlay.points[0];
-      const figures: any[] = [];
+      if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
 
-      // Entry marker
+      const figures: any[] = [];
+      const entryLeft = coordinates[0];
+      const entryRight = coordinates[1];
+      const entryLeftPoint = overlay.points[0];
+
+      const leftX = entryLeft.x;
+      const rightX = entryRight.x;
+      const boxWidth = rightX - leftX;
+      const entryY = entryLeft.y;
+
+      // Entry triangle marker at left point
       figures.push({
         key: 'long-entry-triangle',
         type: 'polygon',
-        attrs: { coordinates: [{ x: entry.x - 6, y: entry.y + 10 }, { x: entry.x + 6, y: entry.y + 10 }, { x: entry.x, y: entry.y }] },
+        attrs: {
+          coordinates: [
+            { x: entryLeft.x - 6, y: entryY + 10 },
+            { x: entryLeft.x + 6, y: entryY + 10 },
+            { x: entryLeft.x, y: entryY }
+          ]
+        },
         styles: { style: 'fill', color: '#26a69a' },
       });
+
+      // Entry line (horizontal line connecting left and right points)
       figures.push({
-        key: 'long-entry-point',
-        type: 'circle',
-        attrs: { x: entry.x, y: entry.y, r: 5 },
-        styles: { style: 'fill_stroke', color: '#26a69a', borderColor: '#ffffff', borderSize: 2 },
+        key: 'long-entry-line',
+        type: 'line',
+        attrs: { coordinates: [{ x: leftX, y: entryY }, { x: rightX, y: entryY }] },
+        styles: { style: 'solid', size: 2, color: '#26a69a' },
       });
 
-      // Entry price label removed - only showing R:R ratio
-
-      // Stop loss (if provided)
-      if (coordinates.length >= 2 && overlay.points.length >= 2) {
-        const sl = coordinates[1];
-        const slPoint = overlay.points[1];
-        const lineExtension = 150;
-        const boxWidth = lineExtension;
-        const leftX = entry.x;
-        const rightX = entry.x + boxWidth;
+      // Stop Loss (point 2)
+      if (coordinates.length >= 3 && overlay.points.length >= 3) {
+        const sl = coordinates[2];
+        const slPoint = overlay.points[2];
 
         figures.push({
           key: 'long-sl-background',
           type: 'rect',
-          attrs: { x: leftX, y: Math.min(entry.y, sl.y), width: boxWidth, height: Math.abs(sl.y - entry.y) },
+          attrs: { x: leftX, y: Math.min(entryY, sl.y), width: boxWidth, height: Math.abs(sl.y - entryY) },
           styles: { style: 'fill', color: 'rgba(239,83,80,0.12)' },
         });
         figures.push({
@@ -684,34 +693,25 @@ export function registerCustomOverlays(klinecharts: any) {
           attrs: { coordinates: [{ x: leftX, y: sl.y }, { x: rightX, y: sl.y }] },
           styles: { style: 'dashed', size: 1, color: '#ef5350' },
         });
-        figures.push({
-          key: 'long-sl-point',
-          type: 'circle',
-          attrs: { x: sl.x, y: sl.y, r: 5 },
-          styles: { style: 'fill_stroke', color: '#ef5350', borderColor: '#ffffff', borderSize: 2 },
-        });
+
         const slPrice = slPoint.value?.toFixed(precision?.price || 2) || '0.00';
         figures.push({
           key: 'long-sl-label',
           type: 'text',
           attrs: { x: leftX + 5, y: sl.y - 3, text: `SL ${slPrice}`, align: 'left', baseline: 'bottom' },
-          styles: { color: '#ef5350', size: 11, family: 'Arial, sans-serif' },
+          styles: { color: '#ffffff', size: 11, family: 'Arial, sans-serif' },
         });
       }
 
-      // Target (if provided)
-      if (coordinates.length >= 3 && overlay.points.length >= 3) {
-        const target = coordinates[2];
-        const targetPoint = overlay.points[2];
-        const lineExtension = 150;
-        const boxWidth = lineExtension;
-        const leftX = entry.x;
-        const rightX = entry.x + boxWidth;
+      // Target (point 3)
+      if (coordinates.length >= 4 && overlay.points.length >= 4) {
+        const target = coordinates[3];
+        const targetPoint = overlay.points[3];
 
         figures.push({
           key: 'long-target-background',
           type: 'rect',
-          attrs: { x: leftX, y: Math.min(entry.y, target.y), width: boxWidth, height: Math.abs(target.y - entry.y) },
+          attrs: { x: leftX, y: Math.min(entryY, target.y), width: boxWidth, height: Math.abs(target.y - entryY) },
           styles: { style: 'fill', color: 'rgba(38,166,154,0.12)' },
         });
         figures.push({
@@ -720,23 +720,18 @@ export function registerCustomOverlays(klinecharts: any) {
           attrs: { coordinates: [{ x: leftX, y: target.y }, { x: rightX, y: target.y }] },
           styles: { style: 'dashed', size: 1, color: '#26a69a' },
         });
-        figures.push({
-          key: 'long-target-point',
-          type: 'circle',
-          attrs: { x: target.x, y: target.y, r: 5 },
-          styles: { style: 'fill_stroke', color: '#26a69a', borderColor: '#ffffff', borderSize: 2 },
-        });
+
         const targetPrice = targetPoint.value?.toFixed(precision?.price || 2) || '0.00';
         figures.push({
           key: 'long-target-label',
           type: 'text',
           attrs: { x: leftX + 5, y: target.y + 3, text: `TARGET ${targetPrice}`, align: 'left', baseline: 'top' },
-          styles: { color: '#26a69a', size: 11, family: 'Arial, sans-serif' },
+          styles: { color: '#ffffff', size: 11, family: 'Arial, sans-serif' },
         });
 
         // Calculate and display Risk-Reward Ratio
-        const slPoint = overlay.points[1];
-        const entryValue = entryPoint.value || 0;
+        const slPoint = overlay.points[2];
+        const entryValue = entryLeftPoint.value || 0;
         const slValue = slPoint.value || 0;
         const targetValue = targetPoint.value || 0;
 
@@ -744,12 +739,10 @@ export function registerCustomOverlays(klinecharts: any) {
         const reward = Math.abs(targetValue - entryValue);
         const rrRatio = risk > 0 ? (reward / risk).toFixed(2) : '0.00';
 
-        // Display R:R in a blue box
-        const rrBoxX = entry.x + 10;
-        const rrBoxY = entry.y - 30;
+        const rrBoxX = entryLeft.x + 10;
+        const rrBoxY = entryY - 30;
         const rrText = `R:R 1:${rrRatio}`;
 
-        // Background box
         figures.push({
           key: 'long-rr-box',
           type: 'rect',
@@ -757,7 +750,6 @@ export function registerCustomOverlays(klinecharts: any) {
           styles: { style: 'fill', color: '#2962ff' },
         });
 
-        // R:R text
         figures.push({
           key: 'long-rr-text',
           type: 'text',
@@ -769,16 +761,84 @@ export function registerCustomOverlays(klinecharts: any) {
       return figures;
     },
 
-    // Interactive: allow chart engine to update points; this simply returns true
-    onPointMove: ({ overlay }: any) => true,
+    onPointMove: ({ overlay, pointIndex, performPoint }: any) => {
+      if (!overlay || !overlay.points || !performPoint) return true;
+
+      const entryLeft = overlay.points[0];
+
+      // Point 1 (entry-right): only horizontal movement, lock to entry Y
+      if (pointIndex === 1 && overlay.points.length >= 2) {
+        overlay.points[1] = {
+          ...overlay.points[1],
+          x: performPoint.x,
+          y: entryLeft.y,
+          dataIndex: performPoint.dataIndex,
+          value: entryLeft.value,
+        };
+      }
+
+      // Point 2 (SL): only vertical movement, lock to entry X
+      if (pointIndex === 2 && overlay.points.length >= 3) {
+        overlay.points[2] = {
+          ...overlay.points[2],
+          x: entryLeft.x,
+          y: performPoint.y,
+          dataIndex: entryLeft.dataIndex,
+          value: performPoint.value,
+        };
+      }
+
+      // Point 3 (Target): only vertical movement, lock to entry X
+      if (pointIndex === 3 && overlay.points.length >= 4) {
+        overlay.points[3] = {
+          ...overlay.points[3],
+          x: entryLeft.x,
+          y: performPoint.y,
+          dataIndex: entryLeft.dataIndex,
+          value: performPoint.value,
+        };
+      }
+
+      return true;
+    },
+
+    performEventMoveForDrawing: ({ currentStep, points, performPoint }: any) => {
+      // With totalStep=1, prevent complex preview logic or keep it minimal
+      if (!performPoint || !points) return;
+    },
+
+    performEventPressedDrawing: ({ points }: any) => {
+      if (points && points.length > 0) {
+        const p0 = points[0];
+        const index = p0.dataIndex;
+        const price = p0.value;
+        // Default: 0.25% risk/reward, 15 bars width
+        const offsetPrice = price * 0.0025;
+        const offsetIndex = 15;
+
+        // Ensure we have exactly 4 points established
+        // P1: Entry Right (width)
+        const p1 = { ...p0, dataIndex: index + offsetIndex, value: price };
+        // P2: SL (Below for Long)
+        const p2 = { ...p0, dataIndex: index, value: price - offsetPrice };
+        // P3: Target (Above for Long)
+        const p3 = { ...p0, dataIndex: index, value: price + offsetPrice };
+
+        points[1] = p1;
+        points[2] = p2;
+        points[3] = p3;
+      }
+      return true;
+    },
   });
 
   // ------------------------------------------------------
-  // 7) SHORT POSITION (editable)
+  // 7) SHORT POSITION (4-point system)
+  // Point 0: Entry Left, Point 1: Entry Right (width), Point 2: SL, Point 3: Target
   // ------------------------------------------------------
   registerOverlay({
     name: 'shortPosition',
-    totalStep: 4,
+    totalStep: 5,
     needDefaultPointFigure: true,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
@@ -787,101 +847,99 @@ export function registerCustomOverlays(klinecharts: any) {
       text: { family: 'Arial, sans-serif', size: 11, color: '#ffffff' },
       point: { radius: 5 },
     },
+
     createPointFigures: ({ coordinates, overlay, precision }: any) => {
-      if (!coordinates || coordinates.length < 1) return [];
-      if (!overlay || !overlay.points || overlay.points.length < 1) return [];
+      if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
 
-      const entry = coordinates[0];
-      const entryPoint = overlay.points[0];
       const figures: any[] = [];
+      const entryLeft = coordinates[0];
+      const entryRight = coordinates[1];
+      const entryLeftPoint = overlay.points[0];
 
+      const leftX = entryLeft.x;
+      const rightX = entryRight.x;
+      const boxWidth = rightX - leftX;
+      const entryY = entryLeft.y;
+
+      // Entry triangle marker at left point (pointing down for short)
       figures.push({
         key: 'short-entry-triangle',
         type: 'polygon',
-        attrs: { coordinates: [{ x: entry.x - 6, y: entry.y - 10 }, { x: entry.x + 6, y: entry.y - 10 }, { x: entry.x, y: entry.y }] },
+        attrs: {
+          coordinates: [
+            { x: entryLeft.x - 6, y: entryY - 10 },
+            { x: entryLeft.x + 6, y: entryY - 10 },
+            { x: entryLeft.x, y: entryY }
+          ]
+        },
         styles: { style: 'fill', color: '#ef5350' },
       });
+
+      // Entry line (horizontal line connecting left and right points)
       figures.push({
-        key: 'short-entry-point',
-        type: 'circle',
-        attrs: { x: entry.x, y: entry.y, r: 5 },
-        styles: { style: 'fill_stroke', color: '#ef5350', borderColor: '#ffffff', borderSize: 2 },
+        key: 'short-entry-line',
+        type: 'line',
+        attrs: { coordinates: [{ x: leftX, y: entryY }, { x: rightX, y: entryY }] },
+        styles: { style: 'solid', size: 2, color: '#ef5350' },
       });
 
-      // Entry price label removed - only showing R:R ratio
-
-      if (coordinates.length >= 2 && overlay.points.length >= 2) {
-        const sl = coordinates[1];
-        const slPoint = overlay.points[1];
-        const lineExtension = 150;
-        const boxWidth = lineExtension;
-        const leftX = entry.x;
-        const rightX = entry.x + boxWidth;
+      // Stop Loss (point 2)
+      if (coordinates.length >= 3 && overlay.points.length >= 3) {
+        const sl = coordinates[2];
+        const slPoint = overlay.points[2];
 
         figures.push({
           key: 'short-sl-background',
           type: 'rect',
-          attrs: { x: leftX, y: Math.min(entry.y, sl.y), width: boxWidth, height: Math.abs(sl.y - entry.y) },
-          styles: { style: 'fill', color: 'rgba(38,166,154,0.12)' },
+          attrs: { x: leftX, y: Math.min(entryY, sl.y), width: boxWidth, height: Math.abs(sl.y - entryY) },
+          styles: { style: 'fill', color: 'rgba(239,83,80,0.12)' },
         });
         figures.push({
           key: 'short-sl-line',
           type: 'line',
           attrs: { coordinates: [{ x: leftX, y: sl.y }, { x: rightX, y: sl.y }] },
-          styles: { style: 'dashed', size: 1, color: '#26a69a' },
+          styles: { style: 'dashed', size: 1, color: '#ef5350' },
         });
-        figures.push({
-          key: 'short-sl-point',
-          type: 'circle',
-          attrs: { x: sl.x, y: sl.y, r: 5 },
-          styles: { style: 'fill_stroke', color: '#26a69a', borderColor: '#ffffff', borderSize: 2 },
-        });
+
         const slPrice = slPoint.value?.toFixed(precision?.price || 2) || '0.00';
         figures.push({
           key: 'short-sl-label',
           type: 'text',
           attrs: { x: leftX + 5, y: sl.y + 3, text: `SL ${slPrice}`, align: 'left', baseline: 'top' },
-          styles: { color: '#26a69a', size: 11, family: 'Arial, sans-serif' },
+          styles: { color: '#ffffff', size: 11, family: 'Arial, sans-serif' },
         });
       }
 
-      if (coordinates.length >= 3 && overlay.points.length >= 3) {
-        const target = coordinates[2];
-        const targetPoint = overlay.points[2];
-        const lineExtension = 150;
-        const boxWidth = lineExtension;
-        const leftX = entry.x;
-        const rightX = entry.x + boxWidth;
+      // Target (point 3)
+      if (coordinates.length >= 4 && overlay.points.length >= 4) {
+        const target = coordinates[3];
+        const targetPoint = overlay.points[3];
 
         figures.push({
           key: 'short-target-background',
           type: 'rect',
-          attrs: { x: leftX, y: Math.min(entry.y, target.y), width: boxWidth, height: Math.abs(target.y - entry.y) },
-          styles: { style: 'fill', color: 'rgba(239,83,80,0.12)' },
+          attrs: { x: leftX, y: Math.min(entryY, target.y), width: boxWidth, height: Math.abs(target.y - entryY) },
+          styles: { style: 'fill', color: 'rgba(38,166,154,0.12)' },
         });
         figures.push({
           key: 'short-target-line',
           type: 'line',
           attrs: { coordinates: [{ x: leftX, y: target.y }, { x: rightX, y: target.y }] },
-          styles: { style: 'dashed', size: 1, color: '#ef5350' },
+          styles: { style: 'dashed', size: 1, color: '#26a69a' },
         });
-        figures.push({
-          key: 'short-target-point',
-          type: 'circle',
-          attrs: { x: target.x, y: target.y, r: 5 },
-          styles: { style: 'fill_stroke', color: '#ef5350', borderColor: '#ffffff', borderSize: 2 },
-        });
+
         const targetPrice = targetPoint.value?.toFixed(precision?.price || 2) || '0.00';
         figures.push({
           key: 'short-target-label',
           type: 'text',
           attrs: { x: leftX + 5, y: target.y - 3, text: `TARGET ${targetPrice}`, align: 'left', baseline: 'bottom' },
-          styles: { color: '#ef5350', size: 11, family: 'Arial, sans-serif' },
+          styles: { color: '#ffffff', size: 11, family: 'Arial, sans-serif' },
         });
 
         // Calculate and display Risk-Reward Ratio
-        const slPoint = overlay.points[1];
-        const entryValue = entryPoint.value || 0;
+        const slPoint = overlay.points[2];
+        const entryValue = entryLeftPoint.value || 0;
         const slValue = slPoint.value || 0;
         const targetValue = targetPoint.value || 0;
 
@@ -889,12 +947,10 @@ export function registerCustomOverlays(klinecharts: any) {
         const reward = Math.abs(entryValue - targetValue);
         const rrRatio = risk > 0 ? (reward / risk).toFixed(2) : '0.00';
 
-        // Display R:R in a blue box
-        const rrBoxX = entry.x + 10;
-        const rrBoxY = entry.y + 25;
+        const rrBoxX = entryLeft.x + 10;
+        const rrBoxY = entryY + 25;
         const rrText = `R:R 1:${rrRatio}`;
 
-        // Background box
         figures.push({
           key: 'short-rr-box',
           type: 'rect',
@@ -902,7 +958,6 @@ export function registerCustomOverlays(klinecharts: any) {
           styles: { style: 'fill', color: '#2962ff' },
         });
 
-        // R:R text
         figures.push({
           key: 'short-rr-text',
           type: 'text',
@@ -914,65 +969,78 @@ export function registerCustomOverlays(klinecharts: any) {
       return figures;
     },
 
-    onPointMove: ({ overlay }: any) => true,
+    onPointMove: ({ overlay, pointIndex, performPoint }: any) => {
+      if (!overlay || !overlay.points || !performPoint) return true;
+
+      const entryLeft = overlay.points[0];
+
+      // Point 1 (entry-right): only horizontal movement, lock to entry Y
+      if (pointIndex === 1 && overlay.points.length >= 2) {
+        overlay.points[1] = {
+          ...overlay.points[1],
+          x: performPoint.x,
+          y: entryLeft.y,
+          dataIndex: performPoint.dataIndex,
+          value: entryLeft.value,
+        };
+      }
+
+      // Point 2 (SL): only vertical movement, lock to entry X
+      if (pointIndex === 2 && overlay.points.length >= 3) {
+        overlay.points[2] = {
+          ...overlay.points[2],
+          x: entryLeft.x,
+          y: performPoint.y,
+          dataIndex: entryLeft.dataIndex,
+          value: performPoint.value,
+        };
+      }
+
+      // Point 3 (Target): only vertical movement, lock to entry X
+      if (pointIndex === 3 && overlay.points.length >= 4) {
+        overlay.points[3] = {
+          ...overlay.points[3],
+          x: entryLeft.x,
+          y: performPoint.y,
+          dataIndex: entryLeft.dataIndex,
+          value: performPoint.value,
+        };
+      }
+
+      return true;
+    },
+
+    performEventMoveForDrawing: ({ currentStep, points, performPoint }: any) => {
+      // With totalStep=1, prevent complex preview logic or keep it minimal
+      if (!performPoint || !points) return;
+    },
+
+    performEventPressedDrawing: ({ points }: any) => {
+      if (points && points.length > 0) {
+        const p0 = points[0];
+        const index = p0.dataIndex;
+        const price = p0.value;
+        // Default: 0.25% risk/reward, 15 bars width
+        const offsetPrice = price * 0.0025;
+        const offsetIndex = 15;
+
+        // Ensure we have exactly 4 points established
+        // P1: Entry Right (width)
+        const p1 = { ...p0, dataIndex: index + offsetIndex, value: price };
+        // P2: SL (Above for Short)
+        const p2 = { ...p0, dataIndex: index, value: price + offsetPrice };
+        // P3: Target (Below for Short)
+        const p3 = { ...p0, dataIndex: index, value: price - offsetPrice };
+
+        points[1] = p1;
+        points[2] = p2;
+        points[3] = p3;
+      }
+      return true;
+    },
   });
 
-  // ------------------------------------------------------
-  // 8) PRICE RANGE
-  // ------------------------------------------------------
-  registerOverlay({
-    name: 'priceRange',
-    totalStep: 3,
-    needDefaultPointFigure: true,
-    needDefaultXAxisFigure: false,
-    needDefaultYAxisFigure: false,
-    styles: {
-      line: { style: 'solid', size: 1, color: '#2962ff' },
-      polygon: { style: 'fill', color: 'rgba(41,98,255,0.1)' },
-    },
-    createPointFigures: ({ coordinates, overlay, precision, bounding }: any) => {
-      if (!coordinates || coordinates.length < 2) return [];
-      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
-      const p1 = coordinates[0];
-      const p2 = coordinates[1];
-      const point1 = overlay.points[0];
-      const point2 = overlay.points[1];
-      const topY = Math.min(p1.y, p2.y);
-      const bottomY = Math.max(p1.y, p2.y);
-      const topValue = Math.max(point1.value, point2.value);
-      const bottomValue = Math.min(point1.value, point2.value);
-      const chartLeft = bounding?.left || Math.min(p1.x, p2.x) - 50;
-      const chartRight = bounding?.width ? chartLeft + bounding.width : Math.max(p1.x, p2.x) + 50;
-      const figures: any[] = [];
-      figures.push({
-        key: 'priceRange-fill',
-        type: 'rect',
-        attrs: { x: chartLeft, y: topY, width: chartRight - chartLeft, height: bottomY - topY },
-        styles: { style: 'fill', color: 'rgba(41,98,255,0.08)' },
-      });
-      figures.push({
-        key: 'priceRange-top',
-        type: 'line',
-        attrs: { coordinates: [{ x: chartLeft, y: topY }, { x: chartRight, y: topY }] },
-        styles: { style: 'solid', size: 1, color: '#2962ff' },
-      });
-      figures.push({
-        key: 'priceRange-bottom',
-        type: 'line',
-        attrs: { coordinates: [{ x: chartLeft, y: bottomY }, { x: chartRight, y: bottomY }] },
-        styles: { style: 'solid', size: 1, color: '#2962ff' },
-      });
-      const priceDiff = (topValue - bottomValue).toFixed(precision?.price || 2);
-      const percentage = (((topValue - bottomValue) / bottomValue) * 100).toFixed(2);
-      figures.push({
-        key: 'priceRange-label',
-        type: 'text',
-        attrs: { x: chartLeft + 10, y: topY + (bottomY - topY) / 2, text: `${priceDiff} (${percentage}%)`, align: 'left', baseline: 'middle' },
-        styles: { color: '#2962ff', size: 12, family: 'Arial, sans-serif', weight: 'bold' },
-      });
-      return figures;
-    },
-  });
+
 
   // ------------------------------------------------------
   // 9) DATE RANGE
