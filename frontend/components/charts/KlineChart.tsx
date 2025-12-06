@@ -50,7 +50,7 @@ function KlineChartComponent({
   const [chartReady, setChartReady] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
   const [activeTool, setActiveTool] = useState<
-    'cursor' | 'line' | 'brush' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'dateRange' | 'priceRange' | 'datePriceRange'
+    'cursor' | 'line' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'priceRange' | 'datePriceRange'
   >('cursor');
   const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
   const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
@@ -408,40 +408,7 @@ function KlineChartComponent({
       });
     }
 
-    if (tool === 'brush') {
-      chartInstance.current.createOverlay({
-        name: 'freeBrush',
-        groupId: 'drawing',
-        mode: 'normal',
-        styles: {
-          line: {
-            color: '#fbc02d',
-            size: 1.6,
-          },
-        },
-        onDrawEnd: (event: any) => {
-          if (event?.overlay?.id) {
-            setSelectedOverlay(event.overlay);
-            const overlayData = {
-              name: 'freeBrush',
-              groupId: 'drawing',
-              points: event.overlay.points,
-              styles: { line: { color: '#fbc02d', size: 1.6 } },
-            };
-            overlayDataRef.current.set(event.overlay.id, overlayData);
-            overlayDataStore.current.set(event.overlay.id, overlayData);
-          }
-          setActiveTool('cursor');
-          saveOverlayState();
-        },
-        onSelected: (event: any) => {
-          if (event?.overlay) setSelectedOverlay(event.overlay);
-        },
-        onDeselected: () => {
-          setSelectedOverlay(null);
-        },
-      });
-    }
+
 
     if (tool === 'rect') {
       chartInstance.current.createOverlay({
@@ -647,33 +614,7 @@ function KlineChartComponent({
       });
     }
 
-    if (tool === 'dateRange') {
-      chartInstance.current.createOverlay({
-        name: 'dateRange',
-        groupId: 'drawing',
-        mode: 'normal',
-        onDrawEnd: (event: any) => {
-          if (event?.overlay?.id) {
-            setSelectedOverlay(event.overlay);
-            const overlayData = {
-              name: 'dateRange',
-              groupId: 'drawing',
-              points: event.overlay.points,
-            };
-            overlayDataRef.current.set(event.overlay.id, overlayData);
-            overlayDataStore.current.set(event.overlay.id, overlayData);
-          }
-          setActiveTool('cursor');
-          saveOverlayState();
-        },
-        onSelected: (event: any) => {
-          if (event?.overlay) setSelectedOverlay(event.overlay);
-        },
-        onDeselected: () => {
-          setSelectedOverlay(null);
-        },
-      });
-    }
+
 
     if (tool === 'datePriceRange') {
       chartInstance.current.createOverlay({
@@ -736,19 +677,19 @@ function KlineChartComponent({
 
   const saveOverlayState = () => {
     if (!chartInstance.current) return;
-    
+
     setTimeout(() => {
       try {
         // Get current overlay IDs from our ref
         const currentOverlayIds = Array.from(overlayDataRef.current.keys());
-        
+
         // Remove any future states (when adding after undo)
         const newHistory = overlayHistory.slice(0, historyIndex + 1);
         newHistory.push([...currentOverlayIds]);
-        
+
         setOverlayHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
-        
+
         console.log('📝 Saved state. Overlays:', currentOverlayIds, 'History length:', newHistory.length, 'Index:', newHistory.length - 1);
       } catch (error) {
         console.error('Error saving overlay state:', error);
@@ -758,21 +699,21 @@ function KlineChartComponent({
 
   const applyOverlayState = (targetIds: string[]) => {
     if (!chartInstance.current) return;
-    
+
     const currentIds = Array.from(overlayDataRef.current.keys());
-    
+
     console.log('🔄 Applying state. Current IDs:', currentIds, 'Target IDs:', targetIds);
-    
+
     // First, remove all overlays from chart
     try {
       chartInstance.current.removeOverlay();
     } catch (e) {
       console.warn('Error removing overlays:', e);
     }
-    
+
     // Clear our tracking of what's currently on the chart
     overlayDataRef.current.clear();
-    
+
     // Then, recreate only the overlays that should exist in target state
     targetIds.forEach((overlayId: string) => {
       const overlayData = overlayDataStore.current.get(overlayId);
@@ -795,12 +736,12 @@ function KlineChartComponent({
       console.log('⚠️ Cannot undo: historyIndex =', historyIndex);
       return;
     }
-    
+
     const newIndex = historyIndex - 1;
     const targetState = overlayHistory[newIndex];
-    
+
     console.log('⬅️ UNDO: index', historyIndex, '→', newIndex);
-    
+
     applyOverlayState(targetState);
     setHistoryIndex(newIndex);
     setSelectedOverlay(null);
@@ -811,12 +752,12 @@ function KlineChartComponent({
       console.log('⚠️ Cannot redo: historyIndex =', historyIndex, 'history length =', overlayHistory.length);
       return;
     }
-    
+
     const newIndex = historyIndex + 1;
     const targetState = overlayHistory[newIndex];
-    
+
     console.log('➡️ REDO: index', historyIndex, '→', newIndex);
-    
+
     applyOverlayState(targetState);
     setHistoryIndex(newIndex);
     setSelectedOverlay(null);
@@ -849,11 +790,11 @@ function KlineChartComponent({
 
   const handleSaveChartImage = () => {
     if (!chartInstance.current) return;
-    
+
     try {
       // Get the chart image as a data URL
       const imageUrl = chartInstance.current.getConvertPictureUrl(true, 'png', '#131722');
-      
+
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = imageUrl;
@@ -861,7 +802,7 @@ function KlineChartComponent({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       setShowScreenshotMenu(false);
     } catch (error) {
       console.error('Error saving chart image:', error);
@@ -870,24 +811,24 @@ function KlineChartComponent({
 
   const handleCopyChartImage = async () => {
     if (!chartInstance.current) return;
-    
+
     try {
       // Get the chart image as a data URL
       const imageUrl = chartInstance.current.getConvertPictureUrl(true, 'png', '#131722');
-      
+
       // Convert data URL to blob
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      
+
       // Copy to clipboard
       await navigator.clipboard.write([
         new ClipboardItem({
           'image/png': blob
         })
       ]);
-      
+
       setShowScreenshotMenu(false);
-      
+
       // Optional: Show success message
       console.log('Chart image copied to clipboard');
     } catch (error) {
@@ -963,11 +904,10 @@ function KlineChartComponent({
         {/* Segment Line Tool */}
         <button
           onClick={() => handleToolClick('line')}
-          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
-            activeTool === 'line'
-              ? 'bg-[#2a2e39] text-white'
-              : 'text-[#787b86] hover:bg-[#1e222d]'
-          }`}
+          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'line'
+            ? 'bg-[#2a2e39] text-white'
+            : 'text-[#787b86] hover:bg-[#1e222d]'
+            }`}
           title="Segment Line"
         >
           <svg
@@ -988,8 +928,7 @@ function KlineChartComponent({
         <div className="relative">
           <button
             onClick={() => setShowMoreToolsMenu((prev) => !prev)}
-            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'brush' ||
-              activeTool === 'rect' ||
+            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'rect' ||
               activeTool === 'rotRect' ||
               activeTool === 'trendLine'
               ? 'bg-[#2a2e39] text-white'
@@ -1033,12 +972,7 @@ function KlineChartComponent({
               >
                 Rotated Rectangle
               </button>
-              <button
-                onClick={() => handleToolClick('brush')}
-                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white"
-              >
-                Free Brush
-              </button>
+
             </div>
           )}
         </div>
@@ -1047,16 +981,14 @@ function KlineChartComponent({
         <div className="relative">
           <button
             onClick={() => setShowAdvancedToolsMenu((prev) => !prev)}
-            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${
-              activeTool === 'fibonacci' ||
+            className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'fibonacci' ||
               activeTool === 'longPosition' ||
               activeTool === 'shortPosition' ||
-              activeTool === 'dateRange' ||
               activeTool === 'priceRange' ||
               activeTool === 'datePriceRange'
-                ? 'bg-[#2a2e39] text-white'
-                : 'text-[#787b86] hover:bg-[#1e222d]'
-            }`}
+              ? 'bg-[#2a2e39] text-white'
+              : 'text-[#787b86] hover:bg-[#1e222d]'
+              }`}
             title="Advanced Tools"
           >
             <svg
@@ -1118,18 +1050,7 @@ function KlineChartComponent({
                 </svg>
                 <span>Short Position</span>
               </button>
-              <button
-                onClick={() => handleToolClick('dateRange')}
-                className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v8" />
-                  <circle cx="12" cy="10" r="2" fill="currentColor" />
-                  <path d="M12 12v10" />
-                  <path d="M6 12h12" />
-                </svg>
-                <span>Date Range</span>
-              </button>
+
               <button
                 onClick={() => handleToolClick('priceRange')}
                 className="w-full px-3 py-2 text-left text-xs hover:bg-[#2a2e39] text-white flex items-center gap-2"
@@ -1158,15 +1079,6 @@ function KlineChartComponent({
             </div>
           )}
         </div>
-
-        {/* Horizontal levels placeholder (you can later map to horizontalStraightLine overlay) */}
-        <button
-          onClick={() => { }}
-          className="w-9 h-9 flex items-center justify-center rounded transition-colors text-[#787b86] hover:bg-[#1e222d]"
-          title="Levels (future)"
-        >
-          <Minus className="w-4 h-4" />
-        </button>
 
         {/* Text tool - you can later hook to custom text overlay */}
         <button
@@ -1355,7 +1267,7 @@ function KlineChartComponent({
           </div>
 
           {/* Undo / Redo */}
-          <button 
+          <button
             onClick={handleUndo}
             disabled={historyIndex <= 0}
             className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1363,7 +1275,7 @@ function KlineChartComponent({
           >
             <Undo className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={handleRedo}
             disabled={historyIndex >= overlayHistory.length - 1}
             className="w-6 h-6 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -1376,7 +1288,7 @@ function KlineChartComponent({
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Fullscreen / Open in New Tab */}
-          <button 
+          <button
             onClick={handleOpenInNewTab}
             className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
             title="Open in new tab"
@@ -1396,7 +1308,7 @@ function KlineChartComponent({
 
           {/* Screenshot Menu */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowScreenshotMenu(!showScreenshotMenu)}
               className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
             >

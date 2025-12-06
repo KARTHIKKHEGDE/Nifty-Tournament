@@ -416,7 +416,7 @@ export function registerCustomOverlays(klinecharts: any) {
       if (!overlay || !overlay.points || overlay.points.length < 3) {
         return true; // Need at least 3 points for the shape to exist
       }
-      
+
       if (!overlay.__dragStart) {
         // If drag start is not stored, store initial mouse pos and corners
         overlay.__dragStart = { start: performPoint ? { x: performPoint.x, y: performPoint.y } : null, originalPoints: overlay.points.map((p: any) => ({ ...p })) };
@@ -661,13 +661,7 @@ export function registerCustomOverlays(klinecharts: any) {
         styles: { style: 'fill_stroke', color: '#26a69a', borderColor: '#ffffff', borderSize: 2 },
       });
 
-      const entryPrice = entryPoint.value?.toFixed(precision?.price || 2) || '0.00';
-      figures.push({
-        key: 'long-entry-label',
-        type: 'text',
-        attrs: { x: entry.x + 10, y: entry.y - 5, text: `LONG ${entryPrice}`, align: 'left', baseline: 'bottom' },
-        styles: { color: '#26a69a', size: 12, family: 'Arial, sans-serif', weight: 'bold' },
-      });
+      // Entry price label removed - only showing R:R ratio
 
       // Stop loss (if provided)
       if (coordinates.length >= 2 && overlay.points.length >= 2) {
@@ -739,6 +733,37 @@ export function registerCustomOverlays(klinecharts: any) {
           attrs: { x: leftX + 5, y: target.y + 3, text: `TARGET ${targetPrice}`, align: 'left', baseline: 'top' },
           styles: { color: '#26a69a', size: 11, family: 'Arial, sans-serif' },
         });
+
+        // Calculate and display Risk-Reward Ratio
+        const slPoint = overlay.points[1];
+        const entryValue = entryPoint.value || 0;
+        const slValue = slPoint.value || 0;
+        const targetValue = targetPoint.value || 0;
+
+        const risk = Math.abs(entryValue - slValue);
+        const reward = Math.abs(targetValue - entryValue);
+        const rrRatio = risk > 0 ? (reward / risk).toFixed(2) : '0.00';
+
+        // Display R:R in a blue box
+        const rrBoxX = entry.x + 10;
+        const rrBoxY = entry.y - 30;
+        const rrText = `R:R 1:${rrRatio}`;
+
+        // Background box
+        figures.push({
+          key: 'long-rr-box',
+          type: 'rect',
+          attrs: { x: rrBoxX, y: rrBoxY - 8, width: 85, height: 20 },
+          styles: { style: 'fill', color: '#2962ff' },
+        });
+
+        // R:R text
+        figures.push({
+          key: 'long-rr-text',
+          type: 'text',
+          attrs: { x: rrBoxX + 42.5, y: rrBoxY + 2, text: rrText, align: 'center', baseline: 'middle' },
+          styles: { color: '#ffffff', size: 12, family: 'Arial, sans-serif', weight: 'bold' },
+        });
       }
 
       return figures;
@@ -783,13 +808,7 @@ export function registerCustomOverlays(klinecharts: any) {
         styles: { style: 'fill_stroke', color: '#ef5350', borderColor: '#ffffff', borderSize: 2 },
       });
 
-      const entryPrice = entryPoint.value?.toFixed(precision?.price || 2) || '0.00';
-      figures.push({
-        key: 'short-entry-label',
-        type: 'text',
-        attrs: { x: entry.x + 10, y: entry.y + 5, text: `SHORT ${entryPrice}`, align: 'left', baseline: 'top' },
-        styles: { color: '#ef5350', size: 12, family: 'Arial, sans-serif', weight: 'bold' },
-      });
+      // Entry price label removed - only showing R:R ratio
 
       if (coordinates.length >= 2 && overlay.points.length >= 2) {
         const sl = coordinates[1];
@@ -858,6 +877,37 @@ export function registerCustomOverlays(klinecharts: any) {
           type: 'text',
           attrs: { x: leftX + 5, y: target.y - 3, text: `TARGET ${targetPrice}`, align: 'left', baseline: 'bottom' },
           styles: { color: '#ef5350', size: 11, family: 'Arial, sans-serif' },
+        });
+
+        // Calculate and display Risk-Reward Ratio
+        const slPoint = overlay.points[1];
+        const entryValue = entryPoint.value || 0;
+        const slValue = slPoint.value || 0;
+        const targetValue = targetPoint.value || 0;
+
+        const risk = Math.abs(entryValue - slValue);
+        const reward = Math.abs(entryValue - targetValue);
+        const rrRatio = risk > 0 ? (reward / risk).toFixed(2) : '0.00';
+
+        // Display R:R in a blue box
+        const rrBoxX = entry.x + 10;
+        const rrBoxY = entry.y + 25;
+        const rrText = `R:R 1:${rrRatio}`;
+
+        // Background box
+        figures.push({
+          key: 'short-rr-box',
+          type: 'rect',
+          attrs: { x: rrBoxX, y: rrBoxY - 8, width: 85, height: 20 },
+          styles: { style: 'fill', color: '#2962ff' },
+        });
+
+        // R:R text
+        figures.push({
+          key: 'short-rr-text',
+          type: 'text',
+          attrs: { x: rrBoxX + 42.5, y: rrBoxY + 2, text: rrText, align: 'center', baseline: 'middle' },
+          styles: { color: '#ffffff', size: 12, family: 'Arial, sans-serif', weight: 'bold' },
         });
       }
 
