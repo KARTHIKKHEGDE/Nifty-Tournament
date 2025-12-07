@@ -529,11 +529,21 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
-  // 5) FIBONACCI RETRACEMENT
+  // 5) FIBONACCI RETRACEMENT (TradingView-like)
   // ------------------------------------------------------
+  const DEFAULT_FIB_LEVELS = [
+    { value: 0, label: '0%', color: '#6c9cff' },
+    { value: 0.236, label: '23.6%', color: '#7bd389' },
+    { value: 0.382, label: '38.2%', color: '#f2d479' },
+    { value: 0.5, label: '50%', color: '#f29a7d' },
+    { value: 0.618, label: '61.8%', color: '#d47be0' },
+    { value: 0.786, label: '78.6%', color: '#b0b0b0' },
+    { value: 1, label: '100%', color: '#6c9cff' }
+  ];
+
   registerOverlay({
     name: 'fibonacciRetracement',
-    totalStep: 2,
+    totalStep: 3,
     needDefaultPointFigure: true,
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
@@ -542,84 +552,140 @@ export function registerCustomOverlays(klinecharts: any) {
       point: { backgroundColor: '#00baff', borderColor: '#ffffff', borderSize: 2, radius: 5 },
       text: { family: 'monospace', size: 11 },
     },
-    createPointFigures: ({ coordinates, bounding, precision }: any) => {
+    createPointFigures: ({ coordinates, overlay, bounding, precision }: any) => {
       if (!coordinates || coordinates.length < 2) return [];
+      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
       const p1 = coordinates[0];
       const p2 = coordinates[1];
-      if (p1.value == null || p2.value == null) return [];
+      const point1 = overlay.points[0];
+      const point2 = overlay.points[1];
+
+      if (point1.value == null || point2.value == null) return [];
+
       const figures: any[] = [];
-      const levels = [
-        { value: 0, label: '0%', color: '#787b86' },
-        { value: 0.236, label: '23.6%', color: '#f23645' },
-        { value: 0.382, label: '38.2%', color: '#ff9800' },
-        { value: 0.5, label: '50%', color: '#fbc02d' },
-        { value: 0.618, label: '61.8%', color: '#00baff' },
-        { value: 0.786, label: '78.6%', color: '#9c27b0' },
-        { value: 1, label: '100%', color: '#787b86' },
-      ];
-      const value1 = p1.value;
-      const value2 = p2.value;
+      const levels = DEFAULT_FIB_LEVELS;
+
+      const value1 = point1.value;
+      const value2 = point2.value;
       const range = value2 - value1;
       if (range === 0) return [];
+
       const isUptrend = value2 > value1;
-      const chartLeft = (bounding && typeof bounding.left === 'number') ? bounding.left : Math.min(p1.x, p2.x) - 20;
-      const chartRight = (bounding && typeof bounding.width === 'number') ? chartLeft + bounding.width : Math.max(p1.x, p2.x) + 20;
+
+      // Lines extend between the two points only (no extension beyond)
+      const chartLeft = Math.min(p1.x, p2.x);
+      const chartRight = Math.max(p1.x, p2.x);
+
       const priceToY = (price: number) => {
         const ratio = (price - value1) / (value2 - value1);
         const clamped = Math.max(0, Math.min(1, ratio));
         return p1.y + (p2.y - p1.y) * clamped;
       };
+
+      // Draw zones first (so they appear behind lines and text)
+      for (let i = 0; i < levels.length - 1; i++) {
+        const level = levels[i];
+        const nextLevel = levels[i + 1];
+
+        let priceLevel: number;
+        let nextPrice: number;
+
+        if (isUptrend) {
+          priceLevel = value2 - level.value * Math.abs(range);
+          nextPrice = value2 - nextLevel.value * Math.abs(range);
+        } else {
+          priceLevel = value1 + level.value * Math.abs(range);
+          nextPrice = value1 + nextLevel.value * Math.abs(range);
+        }
+
+        const levelY = priceToY(priceLevel);
+        const nextY = priceToY(nextPrice);
+
+        // Zone fill
+        const hex = (level.color || '#000000').replace('#', '');
+        let fillColor = 'rgba(0,0,0,0.06)';
+        if (hex.length === 6) {
+          const r = parseInt(hex.slice(0, 2), 16);
+          const g = parseInt(hex.slice(2, 4), 16);
+          const b = parseInt(hex.slice(4, 6), 16);
+          fillColor = `rgba(${r},${g},${b},0.06)`;
+        }
+
+        figures.push({
+          key: `fib-zone-${i}`,
+          type: 'rect',
+          attrs: {
+            x: chartLeft,
+            y: Math.min(levelY, nextY),
+            width: chartRight - chartLeft,
+            height: Math.abs(nextY - levelY)
+          },
+          styles: { style: 'fill', color: fillColor }
+        });
+      }
+
+      // Draw lines and labels
       for (let i = 0; i < levels.length; i++) {
         const level = levels[i];
         let priceLevel: number;
-        if (isUptrend) priceLevel = value2 - level.value * Math.abs(range);
-        else priceLevel = value1 + level.value * Math.abs(range);
+
+        if (isUptrend) {
+          priceLevel = value2 - level.value * Math.abs(range);
+        } else {
+          priceLevel = value1 + level.value * Math.abs(range);
+        }
+
         const levelY = priceToY(priceLevel);
+
+        // Horizontal line
         figures.push({
-          key: `fib-line-${level.value}`,
+          key: `fib-line-${i}`,
           type: 'line',
           attrs: { coordinates: [{ x: chartLeft, y: levelY }, { x: chartRight, y: levelY }] },
-          styles: { style: 'dashed', size: 1, color: level.color },
-        });
-        figures.push({
-          key: `fib-price-${level.value}`,
-          type: 'text',
-          attrs: { x: chartLeft + 6, y: levelY, text: Number(priceLevel).toFixed(precision?.price ?? 2), align: 'left', baseline: 'middle' },
-          styles: { color: level.color, size: 11, family: 'monospace' },
-        });
-        figures.push({
-          key: `fib-label-${level.value}`,
-          type: 'text',
-          attrs: { x: chartRight - 6, y: levelY, text: level.label, align: 'right', baseline: 'middle' },
-          styles: { color: level.color, size: 12, family: 'Arial, sans-serif', weight: 'bold' },
+          styles: { style: 'dashed', size: 1, color: level.color }
         });
 
-        if (i < levels.length - 1) {
-          const nextLevel = levels[i + 1];
-          let nextPrice: number;
-          if (isUptrend) nextPrice = value2 - nextLevel.value * Math.abs(range);
-          else nextPrice = value1 + nextLevel.value * Math.abs(range);
-          const nextY = priceToY(nextPrice);
-          const hex = (level.color || '#000000').replace('#', '');
-          let fillColor = 'rgba(0,0,0,0.06)';
-          if (hex.length === 6) {
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            fillColor = `rgba(${r},${g},${b},0.06)`;
-          }
-          figures.push({
-            key: `fib-zone-${level.value}`,
-            type: 'rect',
-            attrs: { x: chartLeft, y: Math.min(levelY, nextY), width: chartRight - chartLeft, height: Math.abs(nextY - levelY) },
-            styles: { style: 'fill', color: fillColor },
-          });
-        }
+        // Price label on left
+        figures.push({
+          key: `fib-price-${i}`,
+          type: 'text',
+          attrs: {
+            x: chartLeft + 6,
+            y: levelY,
+            text: Number(priceLevel).toFixed(precision?.price ?? 2),
+            align: 'left',
+            baseline: 'middle'
+          },
+          styles: { color: level.color, size: 11, family: 'monospace' }
+        });
+
+        // Percentage label on right
+        figures.push({
+          key: `fib-label-${i}`,
+          type: 'text',
+          attrs: {
+            x: chartRight - 6,
+            y: levelY,
+            text: level.label,
+            align: 'right',
+            baseline: 'middle'
+          },
+          styles: { color: level.color, size: 12, family: 'Arial, sans-serif', weight: 'bold' }
+        });
       }
+
+      // Connector line between anchor points
+      figures.push({
+        key: 'connector',
+        type: 'line',
+        attrs: { coordinates: [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }] },
+        styles: { style: 'solid', size: 1, color: '#2a73ff' }
+      });
+
       return figures;
     },
     onPointMove: ({ overlay }: any) => {
-      // Keep interactive: the engine handles point movement; we return true
       return true;
     }
   });
