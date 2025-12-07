@@ -1156,8 +1156,12 @@ function KlineChartComponent({
             </button>
 
             {showTimeframeMenu && (
-              <div className="absolute top-full left-0 mt-1 w-32 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50">
-                {['1m', '3m', '5m', '15m', '30m', '1h', '1d'].map(
+              <div className="absolute top-full left-0 mt-1 w-40 bg-[#1e222d] border border-[#2a2e39] rounded shadow-lg py-1 z-50 max-h-96 overflow-y-auto">
+                {/* Intraday (Minute-based) Section */}
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide border-b border-[#2a2e39]">
+                  Intraday
+                </div>
+                {['1m', '3m', '5m', '10m', '15m', '30m'].map(
                   (tf) => (
                     <button
                       key={tf}
@@ -1173,7 +1177,59 @@ function KlineChartComponent({
                         : 'text-white'
                         }`}
                     >
-                      {tf}
+                      {tf === '1m' ? '1 minute' :
+                        tf === '3m' ? '3 minutes' :
+                          tf === '5m' ? '5 minutes' :
+                            tf === '10m' ? '10 minutes' :
+                              tf === '15m' ? '15 minutes' :
+                                '30 minutes'}
+                    </button>
+                  )
+                )}
+
+                {/* Hourly Section */}
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide border-t border-b border-[#2a2e39] mt-1">
+                  Hourly
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedTimeframe('1h');
+                    setShowTimeframeMenu(false);
+                    if (onTimeframeChange) {
+                      onTimeframeChange('1h');
+                    }
+                  }}
+                  className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === '1h'
+                    ? 'text-[#2962ff] bg-[#2a2e39]'
+                    : 'text-white'
+                    }`}
+                >
+                  1 hour
+                </button>
+
+                {/* Daily/Weekly/Monthly Section */}
+                <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide border-t border-b border-[#2a2e39] mt-1">
+                  Daily & Above
+                </div>
+                {['1d', '1w', '1M'].map(
+                  (tf) => (
+                    <button
+                      key={tf}
+                      onClick={() => {
+                        setSelectedTimeframe(tf);
+                        setShowTimeframeMenu(false);
+                        if (onTimeframeChange) {
+                          onTimeframeChange(tf);
+                        }
+                      }}
+                      className={`w-full px-4 py-2 text-left text-xs hover:bg-[#2a2e39] transition-colors ${selectedTimeframe === tf
+                        ? 'text-[#2962ff] bg-[#2a2e39]'
+                        : 'text-white'
+                        }`}
+                    >
+                      {tf === '1d' ? 'Daily' :
+                        tf === '1w' ? 'Weekly' :
+                          'Monthly'}
                     </button>
                   )
                 )}
