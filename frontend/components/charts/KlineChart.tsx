@@ -70,6 +70,10 @@ function KlineChartComponent({
   const overlayDataRef = useRef<Map<string, any>>(new Map()); // Current overlays on chart
   const overlayDataStore = useRef<Map<string, any>>(new Map()); // Permanent storage for all overlay data
 
+  // Y-axis mode state
+  const [yAxisMode, setYAxisMode] = useState<'normal' | 'percent' | 'log'>('normal');
+  const refPriceRef = useRef<number>(0); // Reference price for percent mode
+
   // Sync timeframe from parent
   useEffect(() => {
     if (currentTimeframe && currentTimeframe !== selectedTimeframe) {
@@ -402,6 +406,38 @@ function KlineChartComponent({
       setActiveIndicators,
       setShowIndicatorMenu
     );
+  };
+
+  // Y-axis mode change handler
+  const handleYAxisModeChange = (mode: 'normal' | 'percent' | 'log') => {
+    if (!chartInstance.current) return;
+
+    setYAxisMode(mode);
+
+    // Set reference price for percent mode (first visible candle's close)
+    if (mode === 'percent') {
+      const visibleData = chartInstance.current.getDataList();
+      if (visibleData && visibleData.length > 0) {
+        refPriceRef.current = visibleData[0].close;
+      }
+    }
+
+    // Apply Y-axis type to chart
+    try {
+      const currentStyles = chartInstance.current.getStyles();
+
+      chartInstance.current.setStyles({
+        ...currentStyles,
+        yAxis: {
+          ...currentStyles.yAxis,
+          type: mode === 'log' ? 'log' : mode === 'percent' ? 'percentage' : 'normal',
+        },
+      });
+
+      console.log(`Y-axis mode changed to: ${mode}`);
+    } catch (error) {
+      console.error('Error changing Y-axis mode:', error);
+    }
   };
 
   // ============= DRAWING TOOL LOGIC =============
@@ -1360,6 +1396,40 @@ function KlineChartComponent({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Y-Axis Mode Buttons */}
+          <div className="flex items-center gap-1 ml-2 border-l border-[#2a2e39] pl-2">
+            <button
+              onClick={() => handleYAxisModeChange('percent')}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'percent'
+                ? 'bg-[#2962ff] text-white'
+                : 'text-[#787b86] hover:bg-[#1e222d]'
+                }`}
+              title="Percentage Scale"
+            >
+              %
+            </button>
+            <button
+              onClick={() => handleYAxisModeChange('log')}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'log'
+                ? 'bg-[#2962ff] text-white'
+                : 'text-[#787b86] hover:bg-[#1e222d]'
+                }`}
+              title="Logarithmic Scale"
+            >
+              log
+            </button>
+            <button
+              onClick={() => handleYAxisModeChange('normal')}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'normal'
+                ? 'bg-[#2962ff] text-white'
+                : 'text-[#787b86] hover:bg-[#1e222d]'
+                }`}
+              title="Auto Scale (Normal)"
+            >
+              auto
+            </button>
           </div>
 
           {/* Undo / Redo */}
