@@ -625,8 +625,9 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
-  // 6) LONG POSITION (4-point system)
+  // 6) LONG POSITION (4-point system with projection)
   // Point 0: Entry Left, Point 1: Entry Right (width), Point 2: SL, Point 3: Target
+  // All points are projected to their correct positions (not raw mouse)
   // ------------------------------------------------------
   registerOverlay({
     name: 'longPosition',
@@ -643,6 +644,48 @@ export function registerCustomOverlays(klinecharts: any) {
     createPointFigures: ({ coordinates, overlay, precision }: any) => {
       if (!coordinates || coordinates.length < 2) return [];
       if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+      // PROJECT all points to their correct positions
+      const p0 = overlay.points[0];
+
+      // Point 1: Project horizontally (same Y/value as p0, different X/dataIndex)
+      if (overlay.points.length >= 2) {
+        const rawP1 = overlay.points[1];
+        coordinates[1] = {
+          ...coordinates[1],
+          y: coordinates[0].y,  // Lock to entry Y
+        };
+        overlay.points[1] = {
+          ...rawP1,
+          value: p0.value,  // Lock to entry price
+        };
+      }
+
+      // Point 2 (SL): Project vertically (same X/dataIndex as p0, different Y/value)
+      if (overlay.points.length >= 3) {
+        const rawP2 = overlay.points[2];
+        coordinates[2] = {
+          ...coordinates[2],
+          x: coordinates[0].x,  // Lock to entry X
+        };
+        overlay.points[2] = {
+          ...rawP2,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
+
+      // Point 3 (Target): Project vertically (same X/dataIndex as p0, different Y/value)
+      if (overlay.points.length >= 4) {
+        const rawP3 = overlay.points[3];
+        coordinates[3] = {
+          ...coordinates[3],
+          x: coordinates[0].x,  // Lock to entry X
+        };
+        overlay.points[3] = {
+          ...rawP3,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
 
       const figures: any[] = [];
       const entryLeft = coordinates[0];
@@ -765,15 +808,27 @@ export function registerCustomOverlays(klinecharts: any) {
       if (!overlay || !overlay.points || !performPoint) return true;
 
       const entryLeft = overlay.points[0];
+      const entryRight = overlay.points[1];
 
-      // Point 1 (entry-right): only horizontal movement, lock to entry Y
+      // Point 0 (entry-left): Only horizontal movement, lock to entry Y/value
+      if (pointIndex === 0 && overlay.points.length >= 2) {
+        overlay.points[0] = {
+          ...overlay.points[0],
+          x: performPoint.x,
+          y: entryRight.y,  // Lock to entry Y
+          dataIndex: performPoint.dataIndex,
+          value: entryRight.value,  // Lock to entry price
+        };
+      }
+
+      // Point 1 (entry-right): Only horizontal movement, lock to entry Y/value
       if (pointIndex === 1 && overlay.points.length >= 2) {
         overlay.points[1] = {
           ...overlay.points[1],
           x: performPoint.x,
-          y: entryLeft.y,
+          y: entryLeft.y,  // Lock to entry Y
           dataIndex: performPoint.dataIndex,
-          value: entryLeft.value,
+          value: entryLeft.value,  // Lock to entry price
         };
       }
 
@@ -803,8 +858,33 @@ export function registerCustomOverlays(klinecharts: any) {
     },
 
     performEventMoveForDrawing: ({ currentStep, points, performPoint }: any) => {
-      // With totalStep=1, prevent complex preview logic or keep it minimal
-      if (!performPoint || !points) return;
+      if (!performPoint || !points || points.length === 0) return;
+
+      const p0 = points[0];
+
+      // Step 2: Drawing width (Point 1) - project horizontally
+      if (currentStep === 2 && points.length >= 2) {
+        points[1] = {
+          ...performPoint,
+          value: p0.value,  // Lock to entry price
+        };
+      }
+
+      // Step 3: Drawing SL (Point 2) - project vertically
+      if (currentStep === 3 && points.length >= 3) {
+        points[2] = {
+          ...performPoint,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
+
+      // Step 4: Drawing Target (Point 3) - project vertically
+      if (currentStep === 4 && points.length >= 4) {
+        points[3] = {
+          ...performPoint,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
     },
 
     performEventPressedDrawing: ({ points }: any) => {
@@ -833,8 +913,9 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
-  // 7) SHORT POSITION (4-point system)
+  // 7) SHORT POSITION (4-point system with projection)
   // Point 0: Entry Left, Point 1: Entry Right (width), Point 2: SL, Point 3: Target
+  // All points are projected to their correct positions (not raw mouse)
   // ------------------------------------------------------
   registerOverlay({
     name: 'shortPosition',
@@ -851,6 +932,48 @@ export function registerCustomOverlays(klinecharts: any) {
     createPointFigures: ({ coordinates, overlay, precision }: any) => {
       if (!coordinates || coordinates.length < 2) return [];
       if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+      // PROJECT all points to their correct positions
+      const p0 = overlay.points[0];
+
+      // Point 1: Project horizontally (same Y/value as p0, different X/dataIndex)
+      if (overlay.points.length >= 2) {
+        const rawP1 = overlay.points[1];
+        coordinates[1] = {
+          ...coordinates[1],
+          y: coordinates[0].y,  // Lock to entry Y
+        };
+        overlay.points[1] = {
+          ...rawP1,
+          value: p0.value,  // Lock to entry price
+        };
+      }
+
+      // Point 2 (SL): Project vertically (same X/dataIndex as p0, different Y/value)
+      if (overlay.points.length >= 3) {
+        const rawP2 = overlay.points[2];
+        coordinates[2] = {
+          ...coordinates[2],
+          x: coordinates[0].x,  // Lock to entry X
+        };
+        overlay.points[2] = {
+          ...rawP2,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
+
+      // Point 3 (Target): Project vertically (same X/dataIndex as p0, different Y/value)
+      if (overlay.points.length >= 4) {
+        const rawP3 = overlay.points[3];
+        coordinates[3] = {
+          ...coordinates[3],
+          x: coordinates[0].x,  // Lock to entry X
+        };
+        overlay.points[3] = {
+          ...rawP3,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
 
       const figures: any[] = [];
       const entryLeft = coordinates[0];
@@ -973,15 +1096,27 @@ export function registerCustomOverlays(klinecharts: any) {
       if (!overlay || !overlay.points || !performPoint) return true;
 
       const entryLeft = overlay.points[0];
+      const entryRight = overlay.points[1];
 
-      // Point 1 (entry-right): only horizontal movement, lock to entry Y
+      // Point 0 (entry-left): Only horizontal movement, lock to entry Y/value
+      if (pointIndex === 0 && overlay.points.length >= 2) {
+        overlay.points[0] = {
+          ...overlay.points[0],
+          x: performPoint.x,
+          y: entryRight.y,  // Lock to entry Y
+          dataIndex: performPoint.dataIndex,
+          value: entryRight.value,  // Lock to entry price
+        };
+      }
+
+      // Point 1 (entry-right): Only horizontal movement, lock to entry Y/value
       if (pointIndex === 1 && overlay.points.length >= 2) {
         overlay.points[1] = {
           ...overlay.points[1],
           x: performPoint.x,
-          y: entryLeft.y,
+          y: entryLeft.y,  // Lock to entry Y
           dataIndex: performPoint.dataIndex,
-          value: entryLeft.value,
+          value: entryLeft.value,  // Lock to entry price
         };
       }
 
@@ -1011,8 +1146,33 @@ export function registerCustomOverlays(klinecharts: any) {
     },
 
     performEventMoveForDrawing: ({ currentStep, points, performPoint }: any) => {
-      // With totalStep=1, prevent complex preview logic or keep it minimal
-      if (!performPoint || !points) return;
+      if (!performPoint || !points || points.length === 0) return;
+
+      const p0 = points[0];
+
+      // Step 2: Drawing width (Point 1) - project horizontally
+      if (currentStep === 2 && points.length >= 2) {
+        points[1] = {
+          ...performPoint,
+          value: p0.value,  // Lock to entry price
+        };
+      }
+
+      // Step 3: Drawing SL (Point 2) - project vertically
+      if (currentStep === 3 && points.length >= 3) {
+        points[2] = {
+          ...performPoint,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
+
+      // Step 4: Drawing Target (Point 3) - project vertically
+      if (currentStep === 4 && points.length >= 4) {
+        points[3] = {
+          ...performPoint,
+          dataIndex: p0.dataIndex,  // Lock to entry dataIndex
+        };
+      }
     },
 
     performEventPressedDrawing: ({ points }: any) => {
@@ -1097,6 +1257,85 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
+  // 10) CUSTOM TEXT
+  // ------------------------------------------------------
+  registerOverlay({
+    name: 'customText',
+    totalStep: 2, // 1 click to place, then auto-complete
+    needDefaultPointFigure: false, // No blue control point background
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    styles: {
+      text: { color: '#ffffff', size: 14, family: 'Arial', weight: 'bold' }
+    },
+    createPointFigures: ({ coordinates, overlay }: any) => {
+      if (!coordinates || coordinates.length < 1) return [];
+      // Use extendData for text content, default to "Text"
+      const textContent = overlay.extendData || "Double click to edit";
+
+      return [
+        {
+          key: 'custom-text-content',
+          type: 'text',
+          attrs: {
+            x: coordinates[0].x,
+            y: coordinates[0].y,
+            text: textContent,
+            align: 'left',
+            baseline: 'bottom'
+          },
+          styles: {
+            color: '#ffffff',
+            size: 16,
+            family: 'Arial',
+            weight: 'bold',
+            backgroundColor: 'transparent', // Explicitly transparent background
+            paddingLeft: 0,
+            paddingRight: 0,
+            paddingTop: 0,
+            paddingBottom: 0,
+            borderRadius: 0
+          },
+          ignoreEvent: false // Allow selecting the text
+        }
+      ];
+    },
+    performEventPressedDrawing: ({ points, performPoint }: any) => {
+      // Only allow one point - stop after first click
+      if (points && points.length === 0 && performPoint) {
+        points.push({ ...performPoint });
+      }
+      return true;
+    },
+    onDrawEnd: async ({ overlay }: any) => {
+      // Prompt for text immediately upon placement using custom modal
+      const promptFunc = (window as any).customPrompt || window.prompt;
+      const initialText = await promptFunc("Enter text:", "Text");
+
+      if (initialText !== null && overlay) {
+        overlay.extendData = initialText;
+      }
+      return true;
+    },
+    onDoubleClick: async ({ overlay, chart }: any) => {
+      // Allow editing on double click using custom modal
+      const currentText = overlay.extendData || "Text";
+      const promptFunc = (window as any).customPrompt || window.prompt;
+      const newText = await promptFunc("Enter text:", currentText);
+
+      if (newText !== null) {
+        // Update overlay extendData
+        overlay.extendData = newText;
+        // Force redraw/update
+        return {
+          extendData: newText
+        };
+      }
+      return true;
+    }
+  });
+
+  // ------------------------------------------------------
   // 10) DATE + PRICE RANGE (Combined)
   // ------------------------------------------------------
   registerOverlay({
@@ -1119,8 +1358,17 @@ export function registerCustomOverlays(klinecharts: any) {
       const bottomY = Math.max(p1.y, p2.y);
       const point1 = overlay.points[0];
       const point2 = overlay.points[1];
-      const topValue = Math.max(point1.value, point2.value);
-      const bottomValue = Math.min(point1.value, point2.value);
+
+      // Calculate price difference and percentage (preserving sign for direction)
+      const priceDiff = point2.value - point1.value;
+      const percentage = ((priceDiff / point1.value) * 100).toFixed(2);
+      const priceChange = priceDiff.toFixed(precision?.price || 2);
+
+      // Determine color based on direction
+      const isPositive = priceDiff >= 0;
+      const color = isPositive ? '#ffffff' : '#ef5350';  // White for positive, red for negative
+      const sign = isPositive ? '+' : '';
+
       const figures: any[] = [];
       figures.push({
         key: 'datePriceRange-box',
@@ -1128,14 +1376,14 @@ export function registerCustomOverlays(klinecharts: any) {
         attrs: { x: leftX, y: topY, width: rightX - leftX, height: bottomY - topY },
         styles: { style: 'stroke_fill', color: 'rgba(255,152,0,0.08)', borderColor: '#ff9800', borderSize: 1.5 },
       });
-      const priceDiff = (topValue - bottomValue).toFixed(precision?.price || 2);
-      const percentage = (((topValue - bottomValue) / bottomValue) * 100).toFixed(2);
+
       figures.push({
         key: 'datePriceRange-price-label',
         type: 'text',
-        attrs: { x: leftX + 5, y: topY + 5, text: `${priceDiff} (${percentage}%)`, align: 'left', baseline: 'top' },
-        styles: { color: '#ff9800', size: 11, family: 'Arial, sans-serif', weight: 'bold' },
+        attrs: { x: leftX + 5, y: topY + 5, text: `${sign}${priceChange} (${sign}${percentage}%)`, align: 'left', baseline: 'top' },
+        styles: { color: color, size: 11, family: 'Arial, sans-serif', weight: 'bold' },
       });
+
       const barDiff = Math.abs((point2?.dataIndex || 0) - (point1?.dataIndex || 0));
       figures.push({
         key: 'datePriceRange-time-label',

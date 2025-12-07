@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { registerCustomOverlays } from '../../utils/klineOverlays';
 import { customATRIndicator, toggleIndicator as toggleChartIndicator } from '../../utils/indicatorUtils';
+import TextInputModal from '../modals/TextInputModal';
 
 interface KlineChartProps {
   data: CandleData[];
@@ -50,13 +51,18 @@ function KlineChartComponent({
   const [chartReady, setChartReady] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('5m');
   const [activeTool, setActiveTool] = useState<
-    'cursor' | 'line' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'datePriceRange'
+    'cursor' | 'line' | 'rect' | 'rotRect' | 'trendLine' | 'fibonacci' | 'longPosition' | 'shortPosition' | 'datePriceRange' | 'text'
   >('cursor');
   const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
   const [showTimeframeMenu, setShowTimeframeMenu] = useState(false);
   const [showMoreToolsMenu, setShowMoreToolsMenu] = useState(false);
   const [showAdvancedToolsMenu, setShowAdvancedToolsMenu] = useState(false);
   const [showScreenshotMenu, setShowScreenshotMenu] = useState(false);
+
+  // Text input modal state
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [textModalValue, setTextModalValue] = useState('');
+  const textModalCallbackRef = useRef<((text: string | null) => void) | null>(null);
 
   const [selectedOverlay, setSelectedOverlay] = useState<any>(null);
   const [overlayHistory, setOverlayHistory] = useState<string[][]>([]);
@@ -81,6 +87,40 @@ function KlineChartComponent({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Custom prompt function to replace window.prompt
+  const customPrompt = (message: string, defaultValue: string = ''): Promise<string | null> => {
+    return new Promise((resolve) => {
+      setTextModalValue(defaultValue);
+      setShowTextModal(true);
+      textModalCallbackRef.current = resolve;
+    });
+  };
+
+  // Expose custom prompt globally for overlay use
+  useEffect(() => {
+    (window as any).customPrompt = customPrompt;
+    return () => {
+      delete (window as any).customPrompt;
+    };
+  }, []);
+
+  // Modal handlers
+  const handleTextModalConfirm = (text: string) => {
+    if (textModalCallbackRef.current) {
+      textModalCallbackRef.current(text);
+      textModalCallbackRef.current = null;
+    }
+    setShowTextModal(false);
+  };
+
+  const handleTextModalCancel = () => {
+    if (textModalCallbackRef.current) {
+      textModalCallbackRef.current(null);
+      textModalCallbackRef.current = null;
+    }
+    setShowTextModal(false);
+  };
 
   // Init chart
   useEffect(() => {
@@ -617,6 +657,41 @@ function KlineChartComponent({
         },
       });
     }
+
+    if (tool === 'text') {
+      chartInstance.current.createOverlay({
+        name: 'customText',
+        groupId: 'drawing',
+        mode: 'normal',
+        onDrawEnd: async (event: any) => {
+          if (event?.overlay?.id) {
+            // Prompt for text immediately upon placement using custom modal
+            const initialText = await customPrompt("Enter text:", "Text");
+            if (initialText !== null) {
+              event.overlay.extendData = initialText;
+            }
+
+            setSelectedOverlay(event.overlay);
+            const overlayData = {
+              name: 'customText',
+              groupId: 'drawing',
+              points: event.overlay.points,
+              extendData: initialText || "Text"
+            };
+            overlayDataRef.current.set(event.overlay.id, overlayData);
+            overlayDataStore.current.set(event.overlay.id, overlayData);
+          }
+          setActiveTool('cursor');
+          saveOverlayState();
+        },
+        onSelected: (event: any) => {
+          if (event?.overlay) setSelectedOverlay(event.overlay);
+        },
+        onDeselected: () => {
+          setSelectedOverlay(null);
+        },
+      });
+    }
   };
 
   const handleToolClick = (tool: typeof activeTool) => {
@@ -1042,11 +1117,14 @@ function KlineChartComponent({
           )}
         </div>
 
-        {/* Text tool - you can later hook to custom text overlay */}
+        {/* Text tool */}
         <button
-          onClick={() => { }}
-          className="w-9 h-9 flex items-center justify-center rounded transition-colors text-[#787b86] hover:bg-[#1e222d]"
-          title="Text (future)"
+          onClick={() => handleToolClick('text')}
+          className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'text'
+            ? 'bg-[#2a2e39] text-white'
+            : 'text-[#787b86] hover:bg-[#1e222d]'
+            }`}
+          title="Text Overlay"
         >
           <Type className="w-5 h-5" />
         </button>
@@ -1392,6 +1470,14 @@ function KlineChartComponent({
           </div>
         </div>
       </div>
+
+      {/* Text Input Modal */}
+      <TextInputModal
+        isOpen={showTextModal}
+        initialValue={textModalValue}
+        onConfirm={handleTextModalConfirm}
+        onCancel={handleTextModalCancel}
+      />
     </div>
   );
 }
