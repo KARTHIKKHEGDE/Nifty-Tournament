@@ -529,7 +529,7 @@ export function registerCustomOverlays(klinecharts: any) {
   });
 
   // ------------------------------------------------------
-  // 5) FIBONACCI RETRACEMENT (TradingView-like)
+  // 5) FIBONACCI RETRACEMENT (TradingView-style with blue pill labels)
   // ------------------------------------------------------
   const DEFAULT_FIB_LEVELS = [
     { value: 0, label: '0%', color: '#6c9cff' },
@@ -544,36 +544,55 @@ export function registerCustomOverlays(klinecharts: any) {
   registerOverlay({
     name: 'fibonacciRetracement',
     totalStep: 3,
-    needDefaultPointFigure: true,
+    needDefaultPointFigure: true, // Disable default blue points, we'll draw custom handles
     needDefaultXAxisFigure: false,
     needDefaultYAxisFigure: false,
-    styles: {
-      line: { style: 'dashed', size: 1, color: '#00baff' },
-      point: { backgroundColor: '#00baff', borderColor: '#ffffff', borderSize: 2, radius: 5 },
-      text: { family: 'monospace', size: 11 },
-    },
-    createPointFigures: ({ coordinates, overlay, bounding, precision }: any) => {
-      if (!coordinates || coordinates.length < 2) return [];
-      if (!overlay || !overlay.points || overlay.points.length < 2) return [];
+
+    createPointFigures: ({ coordinates, overlay, bounding, precision, points }: any) => {
+      const figures: any[] = [];
+
+      // Draw custom draggable handle circles
+      if (points && points.length >= 2) {
+        for (let i = 0; i < 2; i++) {
+          const pt = points[i];
+          if (!pt) continue;
+          figures.push({
+            key: `point-${i}`,
+            type: 'circle',
+            attrs: { x: pt.x, y: pt.y, r: 5 },
+            styles: { style: 'fill', color: '#ffffff', borderColor: '#1f7bff', borderSize: 2 },
+            isPoint: true,
+            pointIndex: i
+          });
+        }
+      }
+
+      // Now draw the Fib levels and labels
+      if (!coordinates || coordinates.length < 2) return figures;
+      if (!overlay || !overlay.points || overlay.points.length < 2) return figures;
 
       const p1 = coordinates[0];
       const p2 = coordinates[1];
       const point1 = overlay.points[0];
       const point2 = overlay.points[1];
 
-      if (point1.value == null || point2.value == null) return [];
+      // Get price values
+      let value1 = point1.value;
+      let value2 = point2.value;
 
-      const figures: any[] = [];
+      if (value1 == null || value2 == null) {
+        // Fallback to dummy values for visual-only drawing
+        value1 = 0;
+        value2 = 1;
+      }
+
+      const range = value2 - value1;
+      if (range === 0) return figures;
+
+      const isUptrend = range > 0;
       const levels = DEFAULT_FIB_LEVELS;
 
-      const value1 = point1.value;
-      const value2 = point2.value;
-      const range = value2 - value1;
-      if (range === 0) return [];
-
-      const isUptrend = value2 > value1;
-
-      // Lines extend between the two points only (no extension beyond)
+      // Lines extend between the two points only
       const chartLeft = Math.min(p1.x, p2.x);
       const chartRight = Math.max(p1.x, p2.x);
 
@@ -583,7 +602,7 @@ export function registerCustomOverlays(klinecharts: any) {
         return p1.y + (p2.y - p1.y) * clamped;
       };
 
-      // Draw zones first (so they appear behind lines and text)
+      // Draw zones first (behind lines and text)
       for (let i = 0; i < levels.length - 1; i++) {
         const level = levels[i];
         const nextLevel = levels[i + 1];
@@ -625,7 +644,7 @@ export function registerCustomOverlays(klinecharts: any) {
         });
       }
 
-      // Draw lines and labels
+      // Draw lines and combined labels
       for (let i = 0; i < levels.length; i++) {
         const level = levels[i];
         let priceLevel: number;
@@ -646,45 +665,40 @@ export function registerCustomOverlays(klinecharts: any) {
           styles: { style: 'dashed', size: 1, color: level.color }
         });
 
-        // Price label on left
+        // RIGHT SIDE: Combined percentage + price in blue pill background
+        const combinedText = `${level.label} (${Number(priceLevel).toFixed(precision?.price ?? 2)})`;
+
+        // Blue pill background
         figures.push({
-          key: `fib-price-${i}`,
+          key: `fib-pill-bg-${i}`,
+          type: 'rect',
+          attrs: {
+            x: chartRight + 8,
+            y: levelY - 12,
+            width: 94,
+            height: 24
+          },
+          styles: { style: 'fill', color: '#1f7bff', borderRadius: 4 }
+        });
+
+        // White text inside pill
+        figures.push({
+          key: `fib-pill-text-${i}`,
           type: 'text',
           attrs: {
-            x: chartLeft + 6,
+            x: chartRight + 8 + 10,
             y: levelY,
-            text: Number(priceLevel).toFixed(precision?.price ?? 2),
+            text: combinedText,
             align: 'left',
             baseline: 'middle'
           },
-          styles: { color: level.color, size: 11, family: 'monospace' }
-        });
-
-        // Percentage label on right
-        figures.push({
-          key: `fib-label-${i}`,
-          type: 'text',
-          attrs: {
-            x: chartRight - 6,
-            y: levelY,
-            text: level.label,
-            align: 'right',
-            baseline: 'middle'
-          },
-          styles: { color: level.color, size: 12, family: 'Arial, sans-serif', weight: 'bold' }
+          styles: { color: '#ffffff', size: 11, family: 'Arial, sans-serif', weight: 'bold' }
         });
       }
 
-      // Connector line between anchor points
-      figures.push({
-        key: 'connector',
-        type: 'line',
-        attrs: { coordinates: [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }] },
-        styles: { style: 'solid', size: 1, color: '#2a73ff' }
-      });
-
       return figures;
     },
+
     onPointMove: ({ overlay }: any) => {
       return true;
     }
