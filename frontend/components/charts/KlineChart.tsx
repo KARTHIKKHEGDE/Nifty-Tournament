@@ -1398,40 +1398,6 @@ function KlineChartComponent({
             )}
           </div>
 
-          {/* Y-Axis Mode Buttons */}
-          <div className="flex items-center gap-1 ml-2 border-l border-[#2a2e39] pl-2">
-            <button
-              onClick={() => handleYAxisModeChange('percent')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'percent'
-                ? 'bg-[#2962ff] text-white'
-                : 'text-[#787b86] hover:bg-[#1e222d]'
-                }`}
-              title="Percentage Scale"
-            >
-              %
-            </button>
-            <button
-              onClick={() => handleYAxisModeChange('log')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'log'
-                ? 'bg-[#2962ff] text-white'
-                : 'text-[#787b86] hover:bg-[#1e222d]'
-                }`}
-              title="Logarithmic Scale"
-            >
-              log
-            </button>
-            <button
-              onClick={() => handleYAxisModeChange('normal')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${yAxisMode === 'normal'
-                ? 'bg-[#2962ff] text-white'
-                : 'text-[#787b86] hover:bg-[#1e222d]'
-                }`}
-              title="Auto Scale (Normal)"
-            >
-              auto
-            </button>
-          </div>
-
           {/* Undo / Redo */}
           <button
             onClick={handleUndo}
@@ -1584,13 +1550,25 @@ function KlineChartComponent({
 
           {/* % / log / auto Toggle */}
           <div className="flex items-center gap-1">
-            <button className="px-2 py-0.5 text-[11px] font-medium text-[#787b86] hover:text-white transition-colors">
+            <button
+              onClick={() => handleYAxisModeChange('percent')}
+              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${yAxisMode === 'percent' ? 'text-[#2962ff]' : 'text-[#787b86] hover:text-white'
+                }`}
+            >
               %
             </button>
-            <button className="px-2 py-0.5 text-[11px] font-medium text-[#787b86] hover:text-white transition-colors">
+            <button
+              onClick={() => handleYAxisModeChange('log')}
+              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${yAxisMode === 'log' ? 'text-[#2962ff]' : 'text-[#787b86] hover:text-white'
+                }`}
+            >
               log
             </button>
-            <button className="px-2 py-0.5 text-[11px] font-medium text-[#2962ff] transition-colors">
+            <button
+              onClick={() => handleYAxisModeChange('normal')}
+              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${yAxisMode === 'normal' ? 'text-[#2962ff]' : 'text-[#787b86] hover:text-white'
+                }`}
+            >
               auto
             </button>
           </div>
