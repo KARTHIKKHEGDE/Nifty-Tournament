@@ -72,6 +72,7 @@ function KlineChartComponent({
 
   // Y-axis mode state
   const [yAxisMode, setYAxisMode] = useState<'normal' | 'percent' | 'log'>('normal');
+  const [isAutoActive, setIsAutoActive] = useState(true); // Track if auto is manually activated
   const refPriceRef = useRef<number>(0); // Reference price for percent mode
 
   // Sync timeframe from parent
@@ -329,6 +330,20 @@ function KlineChartComponent({
             }
           });
 
+          // Listen for zoom events to deactivate auto button
+          chartInstance.current.subscribeAction('onZoom', () => {
+            if (yAxisMode === 'normal' && isAutoActive) {
+              setIsAutoActive(false);
+            }
+          });
+
+          // Listen for scroll/pan events to deactivate auto button
+          chartInstance.current.subscribeAction('onScroll', () => {
+            if (yAxisMode === 'normal' && isAutoActive) {
+              setIsAutoActive(false);
+            }
+          });
+
           if (showVolume) {
             chartInstance.current.createIndicator('VOL', false, {
               id: 'volume_pane',
@@ -413,6 +428,12 @@ function KlineChartComponent({
     if (!chartInstance.current) return;
 
     setYAxisMode(mode);
+    // Mark auto as active when user clicks it
+    if (mode === 'normal') {
+      setIsAutoActive(true);
+    } else {
+      setIsAutoActive(false);
+    }
 
     // Set reference price for percent mode (first visible candle's close)
     if (mode === 'percent') {
@@ -1566,7 +1587,7 @@ function KlineChartComponent({
             </button>
             <button
               onClick={() => handleYAxisModeChange('normal')}
-              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${yAxisMode === 'normal' ? 'text-[#2962ff]' : 'text-[#787b86] hover:text-white'
+              className={`px-2 py-0.5 text-[11px] font-medium transition-colors ${yAxisMode === 'normal' && isAutoActive ? 'text-[#2962ff]' : 'text-[#787b86] hover:text-white'
                 }`}
             >
               auto
