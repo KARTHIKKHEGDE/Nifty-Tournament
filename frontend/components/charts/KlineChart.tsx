@@ -43,6 +43,11 @@ function KlineChartComponent({
 }: KlineChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstance = useRef<any>(null);
+  const timeframeMenuRef = useRef<HTMLDivElement>(null);
+  const indicatorMenuRef = useRef<HTMLDivElement>(null);
+  const moreToolsMenuRef = useRef<HTMLDivElement>(null);
+  const advancedToolsMenuRef = useRef<HTMLDivElement>(null);
+  const screenshotMenuRef = useRef<HTMLDivElement>(null);
 
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [priceChange, setPriceChange] = useState<number>(0);
@@ -92,6 +97,41 @@ function KlineChartComponent({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Click outside handler to close all menus
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside timeframe menu
+      if (timeframeMenuRef.current && !timeframeMenuRef.current.contains(event.target as Node)) {
+        setShowTimeframeMenu(false);
+      }
+      // Check if click is outside indicator menu
+      if (indicatorMenuRef.current && !indicatorMenuRef.current.contains(event.target as Node)) {
+        setShowIndicatorMenu(false);
+      }
+      // Check if click is outside more tools menu
+      if (moreToolsMenuRef.current && !moreToolsMenuRef.current.contains(event.target as Node)) {
+        setShowMoreToolsMenu(false);
+      }
+      // Check if click is outside advanced tools menu
+      if (advancedToolsMenuRef.current && !advancedToolsMenuRef.current.contains(event.target as Node)) {
+        setShowAdvancedToolsMenu(false);
+      }
+      // Check if click is outside screenshot menu
+      if (screenshotMenuRef.current && !screenshotMenuRef.current.contains(event.target as Node)) {
+        setShowScreenshotMenu(false);
+      }
+    };
+
+    // Add event listener when any menu is open
+    if (showTimeframeMenu || showIndicatorMenu || showMoreToolsMenu || showAdvancedToolsMenu || showScreenshotMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTimeframeMenu, showIndicatorMenu, showMoreToolsMenu, showAdvancedToolsMenu, showScreenshotMenu]);
 
   // Custom prompt function to replace window.prompt
   const customPrompt = (message: string, defaultValue: string = ''): Promise<string | null> => {
@@ -1031,7 +1071,7 @@ function KlineChartComponent({
         </button>
 
         {/* More Tools Menu Button */}
-        <div className="relative">
+        <div className="relative" ref={moreToolsMenuRef}>
           <button
             onClick={() => setShowMoreToolsMenu((prev) => !prev)}
             className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'rect' ||
@@ -1084,7 +1124,7 @@ function KlineChartComponent({
         </div>
 
         {/* Advanced Tools Menu Button (Fibonacci, etc.) */}
-        <div className="relative">
+        <div className="relative" ref={advancedToolsMenuRef}>
           <button
             onClick={() => setShowAdvancedToolsMenu((prev) => !prev)}
             className={`w-9 h-9 flex items-center justify-center rounded transition-colors ${activeTool === 'fibonacci' ||
@@ -1203,7 +1243,7 @@ function KlineChartComponent({
           <h3 className="text-white font-semibold text-sm">{symbol}</h3>
 
           {/* Timeframe selector */}
-          <div className="relative">
+          <div className="relative" ref={timeframeMenuRef}>
             <button
               onClick={() => setShowTimeframeMenu(!showTimeframeMenu)}
               className="px-3 py-1 text-xs font-medium rounded bg-[#2a2e39] text-white hover:bg-[#363a45] transition-colors flex items-center gap-1"
@@ -1295,7 +1335,7 @@ function KlineChartComponent({
           </div>
 
           {/* Indicators */}
-          <div className="relative">
+          <div className="relative" ref={indicatorMenuRef}>
             <button
               onClick={() => setShowIndicatorMenu(!showIndicatorMenu)}
               className="px-3 py-1 text-xs font-medium text-[#787b86] hover:bg-[#1e222d] rounded transition-colors flex items-center gap-1"
@@ -1460,7 +1500,7 @@ function KlineChartComponent({
           </button>
 
           {/* Screenshot Menu */}
-          <div className="relative">
+          <div className="relative" ref={screenshotMenuRef}>
             <button
               onClick={() => setShowScreenshotMenu(!showScreenshotMenu)}
               className="w-8 h-8 flex items-center justify-center rounded text-[#787b86] hover:bg-[#1e222d] transition-colors"
