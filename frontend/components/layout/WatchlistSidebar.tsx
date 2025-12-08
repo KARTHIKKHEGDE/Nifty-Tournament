@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Search, TrendingUp, TrendingDown, X, Plus } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, X, Plus, BarChart2 } from 'lucide-react';
 import { useCombobox } from 'downshift';
 import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
 import {
@@ -8,6 +8,8 @@ import {
     isOptionSuggestion,
     SearchSuggestion
 } from '../../utils/searchUtils';
+import SimpleOrderModal from '../trading/SimpleOrderModal';
+import { OrderSide } from '../../types';
 
 interface WatchlistSidebarProps {
     onSymbolSelect: (symbol: WatchlistSymbol) => void;
@@ -19,6 +21,10 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
     const [hoveredSymbol, setHoveredSymbol] = useState<string | null>(null);
     const [hoveredSuggestion, setHoveredSuggestion] = useState<number | null>(null);
     const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+    const [orderModalOpen, setOrderModalOpen] = useState(false);
+    const [selectedSymbol, setSelectedSymbol] = useState<WatchlistSymbol | null>(null);
+    const [orderSide, setOrderSide] = useState<OrderSide>(OrderSide.BUY);
+    const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
 
     // Fetch suggestions when search query changes
     React.useEffect(() => {
@@ -86,6 +92,26 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
     const handleRemove = (symbol: string, e: React.MouseEvent) => {
         e.stopPropagation();
         removeFromWatchlist(symbol);
+    };
+
+    const handleBuySell = (item: WatchlistSymbol, side: OrderSide, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setClickPosition({ x: e.clientX, y: e.clientY });
+        setSelectedSymbol(item);
+        setOrderSide(side);
+        setOrderModalOpen(true);
+    };
+
+    // Check if symbol is an option (contains CE or PE)
+    const isOption = (symbol: string) => {
+        return symbol.includes('CE') || symbol.includes('PE');
+    };
+
+    // Extract instrument type from symbol
+    const getInstrumentType = (symbol: string): 'CE' | 'PE' | 'INDEX' => {
+        if (symbol.includes('CE')) return 'CE';
+        if (symbol.includes('PE')) return 'PE';
+        return 'INDEX';
     };
 
     return (
@@ -217,11 +243,30 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                                         >
                                             <X className="w-3 h-3" />
                                         </button>
+                                        {isOption(item.symbol) && (
+                                            <>
+                                                <button
+                                                    onClick={(e) => handleBuySell(item, OrderSide.BUY, e)}
+                                                    className="w-6 h-6 rounded bg-green-500/20 hover:bg-green-500 text-green-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors"
+                                                    title="Buy"
+                                                >
+                                                    B
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleBuySell(item, OrderSide.SELL, e)}
+                                                    className="w-6 h-6 rounded bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors"
+                                                    title="Sell"
+                                                >
+                                                    S
+                                                </button>
+                                            </>
+                                        )}
                                         <button
                                             onClick={() => handleChartClick(item)}
-                                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                                            className="w-6 h-6 rounded bg-blue-500/20 hover:bg-blue-500 text-blue-500 hover:text-white flex items-center justify-center transition-colors"
+                                            title="Chart"
                                         >
-                                            Chart
+                                            <BarChart2 className="w-3 h-3" />
                                         </button>
                                     </div>
                                 )}
@@ -261,6 +306,24 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                     {filteredWatchlist.length} {filteredWatchlist.length === 1 ? 'symbol' : 'symbols'}
                 </p>
             </div>
+
+            {/* Order Modal */}
+            {selectedSymbol && (
+                <SimpleOrderModal
+                    isOpen={orderModalOpen}
+                    onClose={() => {
+                        setOrderModalOpen(false);
+                        setSelectedSymbol(null);
+                        setClickPosition(null);
+                    }}
+                    symbol={selectedSymbol.symbol}
+                    currentPrice={selectedSymbol.ltp}
+                    instrumentType={getInstrumentType(selectedSymbol.symbol)}
+                    initialSide={orderSide}
+                    lotSize={75}
+                    clickPosition={clickPosition}
+                />
+            )}
         </div>
     );
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BarChart2, Plus } from 'lucide-react';
 import { OptionData, OrderSide } from '../../types';
 import { formatCurrency, formatLargeNumber, formatPercentage, isATM } from '../../utils/formatters';
+import SimpleOrderModal from '../trading/SimpleOrderModal';
 
 interface OptionsChainProps {
     spotPrice: number;
@@ -12,6 +13,11 @@ interface OptionsChainProps {
 
 export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }: OptionsChainProps) {
     const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
+    const [orderModalOpen, setOrderModalOpen] = useState(false);
+    const [selectedOption, setSelectedOption] = useState<OptionData | null>(null);
+    const [orderSide, setOrderSide] = useState<OrderSide>(OrderSide.BUY);
+    const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
+    const tableBodyRef = React.useRef<HTMLTableSectionElement>(null);
 
     // Get unique strike prices
     const strikes = Array.from(
@@ -20,12 +26,62 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
         .filter((strike) => strike != null && !isNaN(strike))
         .sort((a, b) => a - b);
 
+    // Find the two nearest ATM strikes
+    const getATMStrikes = () => {
+        if (strikes.length === 0) return [];
+        
+        // Find strikes closest to spot price
+        const sorted = [...strikes].sort((a, b) => 
+            Math.abs(a - spotPrice) - Math.abs(b - spotPrice)
+        );
+        
+        // Return the 2 closest strikes
+        return sorted.slice(0, 2).sort((a, b) => a - b);
+    };
+
+    const atmStrikes = getATMStrikes();
+
+    // Scroll to ATM strikes when component mounts or spotPrice changes
+    React.useEffect(() => {
+        if (tableBodyRef.current && atmStrikes.length > 0) {
+            // Find the first ATM strike row
+            const firstATMStrike = atmStrikes[0];
+            const rowIndex = strikes.indexOf(firstATMStrike);
+            
+            if (rowIndex !== -1) {
+                // Slight delay to ensure DOM is ready
+                setTimeout(() => {
+                    const rows = tableBodyRef.current?.getElementsByTagName('tr');
+                    if (rows && rows[rowIndex]) {
+                        rows[rowIndex].scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }
+                }, 100);
+            }
+        }
+    }, [spotPrice, strikes.length]);
+
     const getCallForStrike = (strike: number) => calls.find((c) => c.strike_price === strike);
     const getPutForStrike = (strike: number) => puts.find((p) => p.strike_price === strike);
 
-    const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => {
+    const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST', event?: React.MouseEvent) => {
         setSelectedStrike(option.strike_price);
-        onOptionSelect?.(option, action);
+        
+        if (action === 'BUY' || action === 'SELL') {
+            // Capture click position
+            if (event) {
+                setClickPosition({ x: event.clientX, y: event.clientY });
+            }
+            // Open the simple order modal
+            setSelectedOption(option);
+            setOrderSide(action === 'BUY' ? OrderSide.BUY : OrderSide.SELL);
+            setOrderModalOpen(true);
+        } else {
+            // For CHART and WATCHLIST, use the existing handler
+            onOptionSelect?.(option, action);
+        }
     };
 
     const getChangeColor = (change: number) => {
@@ -44,14 +100,14 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                 <Plus className="w-3 h-3" />
             </button>
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(option, 'BUY'); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(option, 'BUY', e); }}
                 className="w-6 h-6 rounded bg-green-500/20 hover:bg-green-500 text-green-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors"
                 title="Buy"
             >
                 B
             </button>
             <button
-                onClick={(e) => { e.stopPropagation(); handleAction(option, 'SELL'); }}
+                onClick={(e) => { e.stopPropagation(); handleAction(option, 'SELL', e); }}
                 className="w-6 h-6 rounded bg-red-500/20 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center text-xs font-bold transition-colors"
                 title="Sell"
             >
@@ -119,11 +175,11 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                             </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody ref={tableBodyRef}>
                         {strikes.map((strike) => {
                             const call = getCallForStrike(strike);
                             const put = getPutForStrike(strike);
-                            const isATMStrike = isATM(strike, spotPrice, 100);
+                            const isATMStrike = atmStrikes.includes(strike);
 
                             return (
                                 <tr
@@ -240,6 +296,24 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                     <span>OI = Open Interest • LTP = Last Traded Price • Chg % = Change %</span>
                 </div>
             </div>
+
+            {/* Simple Order Modal */}
+            {selectedOption && (
+                <SimpleOrderModal
+                    isOpen={orderModalOpen}
+                    onClose={() => {
+                        setOrderModalOpen(false);
+                        setSelectedOption(null);
+                        setClickPosition(null);
+                    }}
+                    symbol={selectedOption.symbol}
+                    currentPrice={selectedOption.ltp}
+                    instrumentType={selectedOption.option_type as 'CE' | 'PE'}
+                    initialSide={orderSide}
+                    lotSize={75}
+                    clickPosition={clickPosition}
+                />
+            )}
         </div>
     );
 }
