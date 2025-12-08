@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import DashboardLayout from '../../components/layout/DashboardLayout';
-import { useTradingStore } from '../../stores/tradingStore';
-import { formatCurrency } from '../../utils/formatters';
+import DashboardLayout from '../components/layout/DashboardLayout';
+import { useTradingStore } from '../stores/tradingStore';
+import { formatCurrency } from '../utils/formatters';
 import { Filter, Download } from 'lucide-react';
-import api from '../../services/api';
+import api from '../services/api';
 
 export default function OrdersPage() {
     const { orders } = useTradingStore();
@@ -15,7 +15,7 @@ export default function OrdersPage() {
     });
 
     return (
-        <DashboardLayout title="Orders" showWatchlist={false}>
+        <DashboardLayout title="Orders" showWatchlist={true}>
             <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">

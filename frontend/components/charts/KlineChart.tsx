@@ -921,7 +921,8 @@ function KlineChartComponent({
       timeframe: selectedTimeframe,
     });
 
-    const url = `/dashboard/chart?${params.toString()}`;
+    const encodedSymbol = symbol.replace(/\s+/g, '-');
+    const url = `/chart/${encodedSymbol}?${params.toString()}`;
     console.log('📊 Opening chart in new tab:', url);
 
     const newWindow = window.open(url, '_blank', 'width=1400,height=900');

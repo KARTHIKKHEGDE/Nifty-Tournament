@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import DashboardLayout from '../../components/layout/DashboardLayout';
-import { useTradingStore } from '../../stores/tradingStore';
-import { formatCurrency } from '../../utils/formatters';
+import DashboardLayout from '../components/layout/DashboardLayout';
+import { useTradingStore } from '../stores/tradingStore';
+import { formatCurrency } from '../utils/formatters';
 import { TrendingUp, TrendingDown, X } from 'lucide-react';
 
 export default function PositionsPage() {
@@ -16,7 +16,7 @@ export default function PositionsPage() {
     const totalRealizedPnL = positions.reduce((sum, pos) => sum + pos.realized_pnl, 0);
 
     return (
-        <DashboardLayout title="Positions" showWatchlist={false}>
+        <DashboardLayout title="Positions" showWatchlist={true}>
             <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">

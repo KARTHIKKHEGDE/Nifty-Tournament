@@ -26,9 +26,9 @@ export default function MainNavbar() {
 
     const navLinks = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'Orders', href: '/dashboard/orders', icon: List },
-        { name: 'Positions', href: '/dashboard/positions', icon: PieChart },
-        { name: 'Tournaments', href: '/dashboard/tournaments', icon: Trophy },
+        { name: 'Orders', href: '/orders', icon: List },
+        { name: 'Positions', href: '/positions', icon: PieChart },
+        { name: 'Tournaments', href: '/tournaments', icon: Trophy },
     ];
 
     return (

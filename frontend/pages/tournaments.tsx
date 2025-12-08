@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import DashboardLayout from '../../components/layout/DashboardLayout';
-import TournamentCard from '../../components/tournaments/TournamentCard';
-import Leaderboard from '../../components/tournaments/Leaderboard';
-import TeamList from '../../components/tournaments/TeamList';
-import CreateTeamModal from '../../components/tournaments/CreateTeamModal';
-import Loader from '../../components/common/Loader';
-import { Tournament, TournamentRanking, TournamentStatus, TournamentType } from '../../types';
-import tournamentService from '../../services/tournamentService';
-import { useUserStore } from '../../stores/userStore';
+import DashboardLayout from '../components/layout/DashboardLayout';
+import TournamentCard from '../components/tournaments/TournamentCard';
+import Leaderboard from '../components/tournaments/Leaderboard';
+import TeamList from '../components/tournaments/TeamList';
+import CreateTeamModal from '../components/tournaments/CreateTeamModal';
+import Loader from '../components/common/Loader';
+import { Tournament, TournamentRanking, TournamentStatus, TournamentType } from '../types';
+import tournamentService from '../services/tournamentService';
+import { useUserStore } from '../stores/userStore';
 import { X } from 'lucide-react';
 
 export default function TournamentsPage() {
@@ -188,7 +188,7 @@ export default function TournamentsPage() {
     };
 
     return (
-        <DashboardLayout title="Tournaments">
+        <DashboardLayout title="Tournaments" showWatchlist={true}>
             <div className="p-6 space-y-6">
                 {/* Header */}
                 <div>

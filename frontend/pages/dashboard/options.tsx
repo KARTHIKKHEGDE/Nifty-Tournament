@@ -140,7 +140,8 @@ export default function OptionsPage() {
                 change: option.change_percent.toString(),
             });
 
-            const url = `/dashboard/chart?${params.toString()}`;
+            const encodedSymbol = option.symbol.replace(/\s+/g, '-');
+            const url = `/chart/${encodedSymbol}?${params.toString()}`;
             console.log('📊 Opening chart window:', url);
             console.log('📊 Option data:', option);
 

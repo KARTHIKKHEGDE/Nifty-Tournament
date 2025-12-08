@@ -26,7 +26,7 @@ const navItems: NavItem[] = [
     },
     {
         name: 'Tournaments',
-        href: '/dashboard/tournaments',
+        href: '/tournaments',
         icon: <Trophy className="w-5 h-5" />,
     },
     {

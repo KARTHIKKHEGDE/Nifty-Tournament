@@ -28,6 +28,58 @@ export default function DashboardHome() {
     const [activeTab, setActiveTab] = useState<'CHART' | 'OPTION_CHAIN'>('CHART');
     const [currentTimeframe, setCurrentTimeframe] = useState('5m');
 
+    // Watch URL for chart/option-chain routes (Zerodha-style)
+    useEffect(() => {
+        // Check if we're on a chart or option-chain route
+        const isChartRoute = router.pathname.startsWith('/chart');
+        const isOptionChainRoute = router.pathname.startsWith('/option-chain');
+        const { symbol, instrument_token } = router.query;
+        
+        if ((isChartRoute || isOptionChainRoute) && symbol && typeof symbol === 'string') {
+            console.log('🔵 [Dashboard] Route detected:', { pathname: router.pathname, symbol, instrument_token });
+            
+            // Decode symbol (convert hyphens back to spaces)
+            const decodedSymbol = symbol.replace(/-/g, ' ');
+            
+            // Set active tab based on route
+            if (isOptionChainRoute) {
+                setActiveTab('OPTION_CHAIN');
+            } else {
+                setActiveTab('CHART');
+            }
+            
+            // Create symbol object from URL
+            const chartSymbol: WatchlistSymbol = {
+                symbol: decodedSymbol,
+                displayName: decodedSymbol,
+                ltp: 0,
+                change: 0,
+                changePercent: 0,
+                instrumentToken: instrument_token ? parseInt(instrument_token as string) : undefined,
+            };
+            
+            // Show chart panel (no page change)
+            setSelectedSymbol(chartSymbol);
+            setShowChart(true);
+            
+            // Fetch chart data if on chart route
+            if (isChartRoute && instrument_token) {
+                const backendTimeframe = mapTimeframeToBackend(currentTimeframe);
+                fetchCandles(decodedSymbol, parseInt(instrument_token as string), backendTimeframe, 200);
+            }
+            
+            // Fetch option chain if on option-chain route
+            if (isOptionChainRoute) {
+                fetchOptionsChain(decodedSymbol, undefined, { above: 15, below: 15 });
+            }
+        } else {
+            // No chart in URL, show dashboard metrics
+            if (showChart) {
+                setShowChart(false);
+            }
+        }
+    }, [router.pathname, router.query]);
+
     // Debug: Component mount
     useEffect(() => {
         console.log('🚀 [Dashboard] Component mounted');
@@ -75,10 +127,16 @@ export default function DashboardHome() {
 
     const handleSymbolSelect = async (symbol: WatchlistSymbol) => {
         console.log('🟣 [handleSymbolSelect] Symbol selected:', symbol.symbol);
-        setSelectedSymbol(symbol);
-        setShowChart(true);
-        setActiveTab('CHART');
-        await handleSymbolChartFetch(symbol, currentTimeframe);
+        
+        // Navigate to /chart/SYMBOL route (Zerodha-style)
+        const params = new URLSearchParams();
+        if (symbol.instrumentToken) {
+            params.set('instrument_token', symbol.instrumentToken.toString());
+        }
+        
+        // Change URL to /chart/SYMBOL without page reload (encode symbol for clean URL)
+        const encodedSymbol = symbol.symbol.replace(/\s+/g, '-');
+        router.push(`/chart/${encodedSymbol}?${params.toString()}`, undefined, { shallow: true });
     };
 
     // Handle option selection (for chart button)
@@ -103,29 +161,17 @@ export default function DashboardHome() {
             return;
         }
         if (action === 'CHART') {
-            // Open chart in new window with option data
-            const params = new URLSearchParams({
-                symbol: option.symbol,
-                instrument_token: option.instrument_token?.toString() || '',
-                strike: option.strike_price.toString(),
-                ltp: option.ltp.toString(),
-                type: option.option_type,
-                oi: option.open_interest.toString(),
-                volume: option.volume.toString(),
-                change: option.change_percent.toString(),
-            });
-
-            const url = `/dashboard/chart?${params.toString()}`;
-            console.log('📊 [Dashboard] Opening chart window:', url);
-
-            const newWindow = window.open(url, '_blank', 'width=1400,height=900');
-
-            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                console.warn('⚠️ [Dashboard] Popup blocked! Opening in same tab instead');
-                window.location.href = url;
-            } else {
-                console.log('✅ [Dashboard] Chart window opened successfully');
+            // Navigate to /chart/SYMBOL route (Zerodha-style)
+            const params = new URLSearchParams();
+            if (option.instrument_token) {
+                params.set('instrument_token', option.instrument_token.toString());
             }
+
+            console.log('📊 [Dashboard] Opening chart:', option.symbol);
+
+            // Change URL to /chart/SYMBOL without page reload (encode symbol for clean URL)
+            const encodedSymbol = option.symbol.replace(/\s+/g, '-');
+            router.push(`/chart/${encodedSymbol}?${params.toString()}`, undefined, { shallow: true });
             return;
         }
         // For BUY/SELL actions, you can add logic here if needed
@@ -149,19 +195,26 @@ export default function DashboardHome() {
 
     return (
         <DashboardLayout
-            title="Dashboard"
+            title={showChart && selectedSymbol ? selectedSymbol.displayName : "Dashboard"}
             showWatchlist={true}
             onSymbolSelect={handleSymbolSelect}
         >
             {showChart && selectedSymbol ? (
-                // Chart View - Full Screen
+                // Chart View - Opens when URL has symbol param
                 <div className="h-full flex flex-col bg-[#0a0a0a]">
                     {/* Header with Tabs and Close Button */}
                     <div className="flex items-center justify-between px-4 bg-[#131722] border-b border-[#2a2e39]">
                         <div className="flex items-center gap-6">
                             {/* Tabs */}
                             <button
-                                onClick={() => setActiveTab('CHART')}
+                                onClick={() => {
+                                    const symbol = router.query.symbol || selectedSymbol?.symbol;
+                                    const token = router.query.instrument_token;
+                                    const params = new URLSearchParams();
+                                    if (token) params.set('instrument_token', token as string);
+                                    const encodedSymbol = (symbol as string)?.replace(/\s+/g, '-') || symbol;
+                                    router.push(`/chart/${encodedSymbol}?${params.toString()}`, undefined, { shallow: true });
+                                }}
                                 className={`py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'CHART'
                                     ? 'text-[#ff5722] border-[#ff5722]'
                                     : 'text-gray-400 border-transparent hover:text-white'
@@ -170,7 +223,14 @@ export default function DashboardHome() {
                                 Chart
                             </button>
                             <button
-                                onClick={() => setActiveTab('OPTION_CHAIN')}
+                                onClick={() => {
+                                    const symbol = router.query.symbol || selectedSymbol?.symbol;
+                                    const token = router.query.instrument_token;
+                                    const params = new URLSearchParams();
+                                    if (token) params.set('instrument_token', token as string);
+                                    const encodedSymbol = (symbol as string)?.replace(/\s+/g, '-') || symbol;
+                                    router.push(`/option-chain/${encodedSymbol}?${params.toString()}`, undefined, { shallow: true });
+                                }}
                                 className={`py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'OPTION_CHAIN'
                                     ? 'text-[#ff5722] border-[#ff5722]'
                                     : 'text-gray-400 border-transparent hover:text-white'
@@ -188,7 +248,10 @@ export default function DashboardHome() {
                                 </span>
                             </div>
                             <button
-                                onClick={() => setShowChart(false)}
+                                onClick={() => {
+                                    router.push('/dashboard', undefined, { shallow: true });
+                                    setShowChart(false);
+                                }}
                                 className="text-xs text-gray-400 hover:text-white px-3 py-1 rounded hover:bg-[#2a2e39] transition-colors"
                             >
                                 Close
@@ -245,7 +308,7 @@ export default function DashboardHome() {
                     </div>
                 </div>
             ) : (
-                // Dashboard Widgets View
+                // Dashboard Widgets View - Shows when no symbol in URL
                 <div className="p-6 space-y-6">
                     {/* Admin Panel Button - Only show for admins */}
                     {user?.is_admin && (
