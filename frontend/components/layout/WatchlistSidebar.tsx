@@ -320,7 +320,7 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                     currentPrice={selectedSymbol.ltp}
                     instrumentType={getInstrumentType(selectedSymbol.symbol)}
                     initialSide={orderSide}
-                    lotSize={75}
+                    lotSize={selectedSymbol.symbol.toUpperCase().includes('BANK') || selectedSymbol.symbol.toUpperCase() === 'BANKNIFTY' ? 35 : 75}
                     clickPosition={clickPosition}
                 />
             )}

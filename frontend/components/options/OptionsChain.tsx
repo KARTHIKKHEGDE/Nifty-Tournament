@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { BarChart2, Plus } from 'lucide-react';
 import { OptionData, OrderSide } from '../../types';
-import { formatCurrency, formatLargeNumber, formatPercentage, isATM } from '../../utils/formatters';
+import { formatCurrency, formatLargeNumber, formatPercentage, isATM, isITM } from '../../utils/formatters';
 import SimpleOrderModal from '../trading/SimpleOrderModal';
 
 interface OptionsChainProps {
     spotPrice: number;
     calls: OptionData[];
     puts: OptionData[];
+    symbol?: string;
     onOptionSelect?: (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => void;
 }
 
-export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }: OptionsChainProps) {
+export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY', onOptionSelect }: OptionsChainProps) {
     const [selectedStrike, setSelectedStrike] = useState<number | null>(null);
     const [orderModalOpen, setOrderModalOpen] = useState(false);
     const [selectedOption, setSelectedOption] = useState<OptionData | null>(null);
@@ -29,12 +30,12 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
     // Find the two nearest ATM strikes
     const getATMStrikes = () => {
         if (strikes.length === 0) return [];
-        
+
         // Find strikes closest to spot price
-        const sorted = [...strikes].sort((a, b) => 
+        const sorted = [...strikes].sort((a, b) =>
             Math.abs(a - spotPrice) - Math.abs(b - spotPrice)
         );
-        
+
         // Return the 2 closest strikes
         return sorted.slice(0, 2).sort((a, b) => a - b);
     };
@@ -47,15 +48,15 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
             // Find the first ATM strike row
             const firstATMStrike = atmStrikes[0];
             const rowIndex = strikes.indexOf(firstATMStrike);
-            
+
             if (rowIndex !== -1) {
                 // Slight delay to ensure DOM is ready
                 setTimeout(() => {
                     const rows = tableBodyRef.current?.getElementsByTagName('tr');
                     if (rows && rows[rowIndex]) {
-                        rows[rowIndex].scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
+                        rows[rowIndex].scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
                         });
                     }
                 }, 100);
@@ -68,7 +69,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
 
     const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST', event?: React.MouseEvent) => {
         setSelectedStrike(option.strike_price);
-        
+
         if (action === 'BUY' || action === 'SELL') {
             // Capture click position
             if (event) {
@@ -123,12 +124,18 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
         </div>
     );
 
+    // Determine lot size dynamically
+    // NIFTY lot size = 75, BANKNIFTY lot size = 35
+    const symbolUpper = symbol?.toUpperCase() || 'NIFTY';
+    const isBankNifty = symbolUpper.includes('BANK') || symbolUpper === 'BANKNIFTY';
+    const currentLotSize = isBankNifty ? 35 : 75;
+
     return (
         <div className="bg-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div className="bg-gray-900 p-4 border-b border-gray-700">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">Options Chain</h3>
+                    <h3 className="text-lg font-semibold text-white">Options Chain ({symbol})</h3>
                     <div className="text-right">
                         <p className="text-sm text-gray-400">Spot Price</p>
                         <p className="text-xl font-bold text-white">{formatCurrency(spotPrice)}</p>
@@ -180,6 +187,8 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                             const call = getCallForStrike(strike);
                             const put = getPutForStrike(strike);
                             const isATMStrike = atmStrikes.includes(strike);
+                            const isCallITM = call && isITM(strike, spotPrice, 'CE');
+                            const isPutITM = put && isITM(strike, spotPrice, 'PE');
 
                             return (
                                 <tr
@@ -190,20 +199,20 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                                     {/* Call Option Data */}
                                     {call ? (
                                         <>
-                                            <td className="text-right py-3 px-3 text-sm text-gray-300 border-r border-gray-700/50">
+                                            <td className={`text-right py-3 px-3 text-sm text-gray-300 border-r border-gray-700/50 ${isCallITM ? 'bg-green-500/10' : ''}`}>
                                                 {formatLargeNumber(call.open_interest)}
                                             </td>
                                             <td
                                                 className={`text-right py-3 px-3 text-sm font-medium border-r border-gray-700/50 ${getChangeColor(
                                                     call.change_percent
-                                                )}`}
+                                                )} ${isCallITM ? 'bg-green-500/10' : ''}`}
                                             >
                                                 {formatPercentage(call.change_percent)}
                                             </td>
-                                            <td className="text-right py-2 px-3 border-r border-gray-700/50">
+                                            <td className={`text-right py-2 px-3 border-r border-gray-700/50 ${isCallITM ? 'bg-green-500/10' : ''}`}>
                                                 <ActionButtons option={call} />
                                             </td>
-                                            <td className="text-right py-3 px-3 border-r border-gray-700/50">
+                                            <td className={`text-right py-3 px-3 border-r border-gray-700/50 ${isCallITM ? 'bg-green-500/10' : ''}`}>
                                                 <button
                                                     onClick={() => handleAction(call, 'CHART')}
                                                     className="text-sm font-semibold text-green-500 hover:text-green-400 transition-colors"
@@ -237,7 +246,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                                     {/* Put Option Data */}
                                     {put ? (
                                         <>
-                                            <td className="text-left py-3 px-3 border-l border-gray-700/50">
+                                            <td className={`text-left py-3 px-3 border-l border-gray-700/50 ${isPutITM ? 'bg-red-500/10' : ''}`}>
                                                 <button
                                                     onClick={() => handleAction(put, 'CHART')}
                                                     className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors"
@@ -245,7 +254,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                                                     {formatCurrency(put.ltp)}
                                                 </button>
                                             </td>
-                                            <td className="text-left py-2 px-3 border-l border-gray-700/50">
+                                            <td className={`text-left py-2 px-3 border-l border-gray-700/50 ${isPutITM ? 'bg-red-500/10' : ''}`}>
                                                 <div className="flex justify-start">
                                                     <ActionButtons option={put} />
                                                 </div>
@@ -253,11 +262,11 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                                             <td
                                                 className={`text-left py-3 px-3 text-sm font-medium border-l border-gray-700/50 ${getChangeColor(
                                                     put.change_percent
-                                                )}`}
+                                                )} ${isPutITM ? 'bg-red-500/10' : ''}`}
                                             >
                                                 {formatPercentage(put.change_percent)}
                                             </td>
-                                            <td className="text-left py-3 px-3 text-sm text-gray-300 border-l border-gray-700/50">
+                                            <td className={`text-left py-3 px-3 text-sm text-gray-300 border-l border-gray-700/50 ${isPutITM ? 'bg-red-500/10' : ''}`}>
                                                 {formatLargeNumber(put.open_interest)}
                                             </td>
                                         </>
@@ -300,6 +309,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
             {/* Simple Order Modal */}
             {selectedOption && (
                 <SimpleOrderModal
+                    key={`${selectedOption.symbol}-${currentLotSize}`}
                     isOpen={orderModalOpen}
                     onClose={() => {
                         setOrderModalOpen(false);
@@ -310,7 +320,7 @@ export default function OptionsChain({ spotPrice, calls, puts, onOptionSelect }:
                     currentPrice={selectedOption.ltp}
                     instrumentType={selectedOption.option_type as 'CE' | 'PE'}
                     initialSide={orderSide}
-                    lotSize={75}
+                    lotSize={currentLotSize}
                     clickPosition={clickPosition}
                 />
             )}

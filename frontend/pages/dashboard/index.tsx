@@ -299,6 +299,7 @@ export default function DashboardHome() {
                                             spotPrice={optionsData.spotPrice}
                                             calls={optionsData.calls}
                                             puts={optionsData.puts}
+                                            symbol={selectedSymbol?.displayName || selectedSymbol?.symbol || 'NIFTY'}
                                             onOptionSelect={handleOptionSelect}
                                         />
                                     </div>

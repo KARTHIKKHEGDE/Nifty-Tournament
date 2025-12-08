@@ -18,6 +18,7 @@ export default function OptionsPage() {
     const { optionsData, isLoading, fetchOptionsChain } = useOptionsChain();
 
     // Local state
+    const [selectedSymbol, setSelectedSymbol] = useState('NIFTY');
     const [selectedExpiry, setSelectedExpiry] = useState('');
     const [selectedOption, setSelectedOption] = useState<OptionData | null>(null);
     const [initialOrderSide, setInitialOrderSide] = useState<OrderSide>(OrderSide.BUY);
@@ -28,7 +29,7 @@ export default function OptionsPage() {
         await fetchCandles(symbol, instrumentToken, '5minute', 200);
     };
 
-    // Fetch expiry dates on mount
+    // Fetch expiry dates when symbol changes
     useEffect(() => {
         const fetchExpiryDates = async () => {
             try {
@@ -36,14 +37,14 @@ export default function OptionsPage() {
                 const data = response.data;
                 console.log('Fetched instruments:', data.instruments?.length || 0);
 
-                const niftyInstruments = data.instruments.filter(
-                    (inst: any) => inst.name === 'NIFTY' && inst.instrument_type === 'CE'
+                const indexInstruments = data.instruments.filter(
+                    (inst: any) => inst.name === selectedSymbol && inst.instrument_type === 'CE'
                 );
 
-                console.log('NIFTY CE instruments found:', niftyInstruments.length);
+                console.log(`${selectedSymbol} CE instruments found:`, indexInstruments.length);
 
                 const expirySet = new Set<string>();
-                niftyInstruments.forEach((inst: any) => {
+                indexInstruments.forEach((inst: any) => {
                     if (inst.expiry) {
                         let expiryDate: string;
                         if (typeof inst.expiry === 'string') {
@@ -61,16 +62,20 @@ export default function OptionsPage() {
 
                 if (uniqueExpiries.length > 0) {
                     setExpiryDates(uniqueExpiries);
-                    setSelectedExpiry(uniqueExpiries[0]);
-                    console.log('Selected first expiry:', uniqueExpiries[0]);
+                    // Only reset selected expiry if it's not in the new list or not set
+                    if (!selectedExpiry || !uniqueExpiries.includes(selectedExpiry)) {
+                        setSelectedExpiry(uniqueExpiries[0]);
+                        console.log('Selected first expiry:', uniqueExpiries[0]);
+                    }
                 } else {
-                    throw new Error('No expiry dates found in instruments');
+                    console.warn('No expiry dates found in instruments, checking fallback');
+                    throw new Error('Instruments empty or no match');
                 }
             } catch (error) {
                 console.error('Error fetching expiry dates:', error);
 
                 try {
-                    const response = await api.get('/api/candles/options-chain/NIFTY');
+                    const response = await api.get(`/api/candles/options-chain/${selectedSymbol}`);
                     const data = response.data;
 
                     const expiries = new Set<string>();
@@ -84,7 +89,9 @@ export default function OptionsPage() {
 
                     if (expiryArray.length > 0) {
                         setExpiryDates(expiryArray);
-                        setSelectedExpiry(expiryArray[0]);
+                        if (!selectedExpiry || !expiryArray.includes(selectedExpiry)) {
+                            setSelectedExpiry(expiryArray[0]);
+                        }
                         console.log('Expiries from options chain:', expiryArray);
                         return;
                     }
@@ -98,14 +105,14 @@ export default function OptionsPage() {
         };
 
         fetchExpiryDates();
-    }, []);
+    }, [selectedSymbol]);
 
-    // Fetch options chain when expiry changes
+    // Fetch options chain when expiry or symbol changes
     useEffect(() => {
         if (selectedExpiry) {
-            fetchOptionsChain('NIFTY', selectedExpiry, { above: 8, below: 8 });
+            fetchOptionsChain(selectedSymbol, selectedExpiry, { above: 8, below: 8 });
         }
-    }, [selectedExpiry, fetchOptionsChain]);
+    }, [selectedSymbol, selectedExpiry, fetchOptionsChain]);
 
     const handleOptionSelect = (option: OptionData, action?: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST') => {
         if (action === 'WATCHLIST') {
@@ -175,30 +182,47 @@ export default function OptionsPage() {
         <DashboardLayout title="Options Chain">
             <div className="p-6 space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">NIFTY Options Chain</h1>
+                        <h1 className="text-3xl font-bold text-white mb-2">{selectedSymbol} Options Chain</h1>
                         <p className="text-gray-400">
-                            View and trade NIFTY options (CE/PE) • Paper Trading Mode
+                            View and trade {selectedSymbol} options (CE/PE) • Paper Trading Mode
                         </p>
                     </div>
 
-                    {/* Expiry Selector */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                            Select Expiry
-                        </label>
-                        <select
-                            value={selectedExpiry}
-                            onChange={(e) => setSelectedExpiry(e.target.value)}
-                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 min-w-[200px]"
-                        >
-                            {expiryDates.map((date) => (
-                                <option key={date} value={date}>
-                                    {formatDate(date)}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="flex items-center gap-4">
+                        {/* Symbol Selector */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                Index
+                            </label>
+                            <select
+                                value={selectedSymbol}
+                                onChange={(e) => setSelectedSymbol(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 min-w-[150px]"
+                            >
+                                <option value="NIFTY">NIFTY</option>
+                                <option value="BANKNIFTY">BANKNIFTY</option>
+                            </select>
+                        </div>
+
+                        {/* Expiry Selector */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                                Select Expiry
+                            </label>
+                            <select
+                                value={selectedExpiry}
+                                onChange={(e) => setSelectedExpiry(e.target.value)}
+                                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 min-w-[200px]"
+                            >
+                                {expiryDates.map((date) => (
+                                    <option key={date} value={date}>
+                                        {formatDate(date)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -212,6 +236,7 @@ export default function OptionsPage() {
                         spotPrice={optionsData.spotPrice}
                         calls={optionsData.calls}
                         puts={optionsData.puts}
+                        symbol={selectedSymbol}
                         onOptionSelect={handleOptionSelect}
                     />
                 )}

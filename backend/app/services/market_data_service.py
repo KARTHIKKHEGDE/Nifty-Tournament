@@ -84,6 +84,12 @@ class MarketDataService:
         try:
             instruments = self.kite.instruments(exchange)
             logger.info(f"Fetched {len(instruments)} instruments from {exchange}")
+            
+            # Debug: Check for NIFTY BANK instruments
+            nifty_bank_count = len([i for i in instruments if i.get('name') == 'NIFTY BANK'])
+            nifty_count = len([i for i in instruments if i.get('name') == 'NIFTY'])
+            logger.info(f"📊 Instruments found - NIFTY: {nifty_count}, NIFTY BANK: {nifty_bank_count}")
+            
             return instruments
         except Exception as e:
             logger.error(f"Failed to fetch instruments: {e}")
@@ -262,26 +268,65 @@ class MarketDataService:
             Dictionary with 'CE' and 'PE' lists
         """
         try:
-            # Get all options for the symbol
+            # Get all options for the symbol - SAME AS get_nifty_options
             instruments = self.get_instruments("NFO")
+            
+            # Map symbol to Zerodha instrument name
+            # In Zerodha CSV: NIFTY = "NIFTY", BANKNIFTY = "NIFTY BANK"
+            if symbol == "BANKNIFTY":
+                instrument_name = "NIFTY BANK"
+            else:
+                instrument_name = symbol
+            
+            logger.info(f"🔍 [get_options_chain] Searching for: {instrument_name} (from {symbol})")
+            
+            # Filter options - EXACT SAME LOGIC AS get_nifty_options
             options = [
                 inst for inst in instruments
-                if inst['name'] == symbol and inst['instrument_type'] in ['CE', 'PE']
+                if inst['name'] == instrument_name and inst['instrument_type'] in ['CE', 'PE']
             ]
             
+            # Fallback for BANKNIFTY if NIFTY BANK yields nothing
+            if len(options) == 0 and instrument_name == "NIFTY BANK":
+                logger.warning(f"⚠️ No options found for 'NIFTY BANK', trying 'BANKNIFTY'...")
+                options = [
+                    inst for inst in instruments
+                    if inst['name'] == "BANKNIFTY" and inst['instrument_type'] in ['CE', 'PE']
+                ]
+            
+            logger.info(f"🔍 [get_options_chain] Found {len(options)} {instrument_name} options (before expiry filter)")
+            
+            # If no options found, return early
+            if len(options) == 0:
+                logger.warning(f"⚠️ [get_options_chain] No options found for {instrument_name} (checked both NIFTY BANK and BANKNIFTY)")
+                # Debug available names
+                names = set(inst['name'] for inst in instruments if inst.get('segment') == 'NFO-OPT')
+                logger.info(f"🔍 [get_options_chain] Available NFO-OPT names: {sorted(list(names))[:10]}...")
+                return {'CE': [], 'PE': []}
+            
+            # If no expiry specified, get the nearest expiry
+            if not expiry_date:
+                # Get all unique expiries and find the nearest one
+                expiries = sorted(set(
+                    inst['expiry'] for inst in options
+                ))
+                if expiries:
+                    expiry_date_obj = expiries[0]  # Nearest expiry
+                    expiry_date = expiry_date_obj.strftime('%Y-%m-%d') if hasattr(expiry_date_obj, 'strftime') else str(expiry_date_obj)
+                    logger.info(f"🔍 [get_options_chain] Auto-selected nearest expiry: {expiry_date}")
+            
+            # Filter by expiry - SAME LOGIC AS get_nifty_options
             if expiry_date:
-                def expiry_matches(inst_expiry, expiry_date):
-                    if isinstance(inst_expiry, str):
-                        # If expiry is already a string, compare directly (strip time if present)
-                        return inst_expiry.split('T')[0] == expiry_date
-                    elif hasattr(inst_expiry, 'strftime'):
-                        return inst_expiry.strftime('%Y-%m-%d') == expiry_date
-                    return False
+                # Debug expiries available
+                available_expiries = sorted(list(set(inst['expiry'].strftime('%Y-%m-%d') for inst in options)))
+                logger.info(f"🔍 [get_options_chain] Available expiries for {instrument_name}: {available_expiries[:5]}...")
+                logger.info(f"🔍 [get_options_chain] Filtering for expiry: {expiry_date}")
 
                 options = [
                     inst for inst in options
-                    if expiry_matches(inst['expiry'], expiry_date)
+                    if inst['expiry'].strftime('%Y-%m-%d') == expiry_date
                 ]
+                logger.info(f"🔍 [get_options_chain] After expiry filter: {len(options)} options")
             
             # Get quotes for all options in batches of 500 (API rate limit)
             instrument_keys = [f"NFO:{inst['tradingsymbol']}" for inst in options]
@@ -290,14 +335,17 @@ class MarketDataService:
             # Batch size for quote calls
             BATCH_SIZE = 500
             
+            logger.info(f"🔍 [get_options_chain] Attempting to fetch quotes for {len(instrument_keys)} instruments")
+            
             for i in range(0, len(instrument_keys), BATCH_SIZE):
                 batch_keys = instrument_keys[i:i + BATCH_SIZE]
                 try:
                     batch_quotes = self.get_quote(batch_keys)
                     quotes.update(batch_quotes)
-                    logger.info(f"Fetched quotes for batch {i//BATCH_SIZE + 1} ({len(batch_keys)} instruments)")
+                    logger.info(f"✅ Fetched quotes for batch {i//BATCH_SIZE + 1} ({len(batch_keys)} instruments)")
                 except Exception as e:
-                    logger.error(f"Failed to fetch quotes for batch {i}: {e}")
+                    logger.warning(f"⚠️ Failed to fetch quotes for batch {i}: {e}. Continuing with 0 LTP...")
+                    # Continue even if quotes fail - we'll use 0 as default
             
             # Organize by CE/PE
             ce_options = []

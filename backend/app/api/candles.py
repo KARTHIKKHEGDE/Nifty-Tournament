@@ -425,11 +425,23 @@ async def get_options_chain(
     market_data = get_market_data_service()
     
     try:
+        print(f"🔵 [get_options_chain] Requested symbol: {symbol}, expiry: {expiry_date}")
         options_chain = market_data.get_options_chain(symbol, expiry_date)
         
+        print(f"🔵 [get_options_chain] Retrieved CE: {len(options_chain['CE'])}, PE: {len(options_chain['PE'])}")
+        
         # Get spot price using correct symbol
-        spot_symbol = f"NSE:{symbol} 50" if symbol == "NIFTY" else f"NSE:{symbol}"
+        # BANKNIFTY spot is listed as "NIFTY BANK" in NSE
+        if symbol == "NIFTY":
+            spot_symbol = "NSE:NIFTY 50"
+        elif symbol == "BANKNIFTY":
+            spot_symbol = "NSE:NIFTY BANK"
+        else:
+            spot_symbol = f"NSE:{symbol}"
+            
         spot_price = market_data.get_current_price(spot_symbol) or 0
+        
+        print(f"🔵 [get_options_chain] Spot price for {spot_symbol}: {spot_price}")
 
         return {
             "symbol": symbol,
@@ -472,9 +484,15 @@ async def get_instruments(
                 continue
             
             # Only include NIFTY and BANKNIFTY
+            # Note: Zerodha CSV has "NIFTY BANK" for BANKNIFTY
             name = inst.get('name', '').upper()
-            if name not in ['NIFTY', 'BANKNIFTY']:
+            if name not in ['NIFTY', 'NIFTY BANK', 'BANKNIFTY']:
                 continue
+            
+            # Normalize NIFTY BANK to BANKNIFTY for frontend consistency
+            if name == 'NIFTY BANK':
+                inst = dict(inst)  # Create a copy
+                inst['name'] = 'BANKNIFTY'
             
             filtered_instruments.append(inst)
         
