@@ -58,7 +58,7 @@ export default function DashboardLayout({
                 <title>{title} - NIFTY Trader</title>
             </Head>
 
-            <div className="min-h-screen bg-[#131722] flex flex-col">
+            <div className="h-screen bg-[#131722] flex flex-col overflow-hidden">
                 <MainNavbar />
                 <div className="flex flex-1 overflow-hidden">
                     {showWatchlist && (
