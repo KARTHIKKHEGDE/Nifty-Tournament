@@ -4,6 +4,7 @@ Admin API routes for tournament and user management.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 
 from app.db import get_db
@@ -158,21 +159,53 @@ async def get_all_tournaments(
     db: Session = Depends(get_db)
 ):
     """
-    Get all tournaments with optional filters.
+    Get all tournaments with optional filters (uses real-time status calculation).
     """
+    from datetime import datetime, timezone
+    
+    now = datetime.now(timezone.utc)
     query = db.query(Tournament)
     
+    # Apply time-based filtering like the public API
     if status_filter:
-        try:
-            status_enum = TournamentStatus(status_filter)
-            query = query.filter(Tournament.status == status_enum)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid status: {status_filter}"
+        if status_filter == 'UPCOMING':
+            query = query.filter(Tournament.start_date > now)
+        elif status_filter == 'ACTIVE':
+            query = query.filter(
+                Tournament.start_date <= now,
+                Tournament.end_date > now
             )
+        elif status_filter == 'COMPLETED':
+            query = query.filter(Tournament.end_date <= now)
+        elif status_filter == 'REGISTRATION_OPEN':
+            query = query.filter(
+                Tournament.registration_deadline > now,
+                Tournament.start_date > now
+            )
+        else:
+            # For other statuses, use the database status field
+            try:
+                status_enum = TournamentStatus(status_filter)
+                query = query.filter(Tournament.status == status_enum)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid status: {status_filter}"
+                )
     
     tournaments = query.order_by(Tournament.created_at.desc()).limit(limit).offset(offset).all()
+    
+    # Update status for each tournament based on current time
+    for tournament in tournaments:
+        if now >= tournament.end_date:
+            tournament.status = TournamentStatus.COMPLETED
+        elif now >= tournament.start_date and now < tournament.end_date:
+            tournament.status = TournamentStatus.ACTIVE
+        elif now < tournament.registration_deadline:
+            tournament.status = TournamentStatus.REGISTRATION_OPEN
+        else:
+            tournament.status = TournamentStatus.UPCOMING
+    
     return tournaments
 
 
@@ -900,7 +933,7 @@ async def get_audit_log(
             "target_type": action.target_type,
             "target_id": action.target_id,
             "description": action.description,
-            "metadata": action.metadata,
+            "metadata": action.action_metadata,
             "ip_address": action.ip_address,
             "created_at": action.created_at
         })

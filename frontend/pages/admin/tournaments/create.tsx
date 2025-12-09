@@ -49,6 +49,11 @@ const CreateTournamentPage = () => {
             return;
         }
 
+        if (!formData.prize_pool || formData.prize_pool <= 0) {
+            toast.error('Prize pool must be greater than 0');
+            return;
+        }
+
         if (new Date(formData.start_date) >= new Date(formData.end_date)) {
             toast.error('End date must be after start date');
             return;
@@ -59,8 +64,31 @@ const CreateTournamentPage = () => {
             return;
         }
 
+        if (formData.tournament_type === TournamentType.TEAM && (!formData.team_size || formData.team_size < 2)) {
+            toast.error('Team size must be at least 2 for team tournaments');
+            return;
+        }
+
+        // Convert datetime-local strings to ISO format with timezone
+        const tournamentData = {
+            name: formData.name,
+            description: formData.description || null,
+            tournament_type: formData.tournament_type,
+            team_size: formData.tournament_type === TournamentType.TEAM ? formData.team_size : null,
+            entry_fee: Number(formData.entry_fee) || 0,
+            prize_pool: Number(formData.prize_pool),
+            starting_balance: Number(formData.starting_balance) || 100000,
+            max_participants: formData.max_participants ? Number(formData.max_participants) : null,
+            start_date: new Date(formData.start_date).toISOString(),
+            end_date: new Date(formData.end_date).toISOString(),
+            registration_deadline: formData.registration_deadline 
+                ? new Date(formData.registration_deadline).toISOString() 
+                : new Date(formData.start_date).toISOString(),
+            rules: formData.rules || null,
+        };
+
         setIsSubmitting(true);
-        const success = await createTournament(formData);
+        const success = await createTournament(tournamentData);
         setIsSubmitting(false);
 
         if (success) {
@@ -70,7 +98,7 @@ const CreateTournamentPage = () => {
 
     return (
         <AdminLayout>
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6 pb-12">
                 {/* Header */}
                 <div>
                     <button

@@ -160,9 +160,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </div>
 
             {/* Main content */}
-            <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'}`}>
+            <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'ml-0'} flex flex-col h-screen`}>
                 {/* Top bar */}
-                <div className="sticky top-0 z-40 flex items-center justify-between h-16 px-6 bg-gray-800 border-b border-gray-700">
+                <div className="sticky top-0 z-40 flex items-center justify-between h-16 px-6 bg-gray-800 border-b border-gray-700 flex-shrink-0">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
                         className="text-gray-400 hover:text-white"
@@ -182,7 +182,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </div>
 
                 {/* Page content */}
-                <main className="p-6">
+                <main className="flex-1 overflow-y-auto p-6">
                     {children}
                 </main>
             </div>

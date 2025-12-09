@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tournament, TournamentType } from '../../types';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import { Trophy, Users, Calendar, DollarSign, Clock, UserPlus } from 'lucide-react';
 import Button from '../common/Button';
 
@@ -19,33 +19,58 @@ export default function TournamentCard({
     isJoined = false,
     isLoading = false,
 }: TournamentCardProps) {
+    // Calculate actual status based on current time
+    const getActualStatus = () => {
+        const now = new Date();
+        const startDate = new Date(tournament.start_date);
+        const endDate = new Date(tournament.end_date);
+        const registrationDeadline = new Date(tournament.registration_deadline);
+
+        // If tournament has ended
+        if (now >= endDate) {
+            return 'COMPLETED';
+        }
+        // If tournament is currently running
+        if (now >= startDate && now < endDate) {
+            return 'ACTIVE';
+        }
+        // If registration is still open
+        if (now < registrationDeadline) {
+            return 'REGISTRATION_OPEN';
+        }
+        // Otherwise upcoming
+        return 'UPCOMING';
+    };
+
+    const actualStatus = getActualStatus();
+
     const getStatusColor = () => {
-        switch (tournament.status) {
+        switch (actualStatus) {
             case 'ACTIVE':
                 return 'bg-green-500';
+            case 'REGISTRATION_OPEN':
+                return 'bg-blue-500';
             case 'UPCOMING':
                 return 'bg-blue-500';
             case 'COMPLETED':
                 return 'bg-gray-500';
-            case 'CANCELLED':
-                return 'bg-red-500';
             default:
                 return 'bg-gray-500';
         }
     };
 
     const getStatusText = () => {
-        switch (tournament.status) {
+        switch (actualStatus) {
             case 'ACTIVE':
                 return 'Live Now';
+            case 'REGISTRATION_OPEN':
+                return 'Registration Open';
             case 'UPCOMING':
                 return 'Upcoming';
             case 'COMPLETED':
                 return 'Completed';
-            case 'CANCELLED':
-                return 'Cancelled';
             default:
-                return tournament.status;
+                return actualStatus;
         }
     };
 
@@ -84,7 +109,7 @@ export default function TournamentCard({
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4">>
+            <div className="p-6 space-y-4">
                 {/* Prize Pool */}
                 <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
                     <div className="flex items-center gap-3">
@@ -103,18 +128,18 @@ export default function TournamentCard({
                     <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-blue-500" />
                         <div>
-                            <p className="text-xs text-gray-400">Start Date</p>
+                            <p className="text-xs text-gray-400">Start Time</p>
                             <p className="text-sm text-white font-medium">
-                                {formatDate(tournament.start_date)}
+                                {formatDateTime(tournament.start_date)}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Clock className="w-5 h-5 text-purple-500" />
                         <div>
-                            <p className="text-xs text-gray-400">End Date</p>
+                            <p className="text-xs text-gray-400">End Time</p>
                             <p className="text-sm text-white font-medium">
-                                {formatDate(tournament.end_date)}
+                                {formatDateTime(tournament.end_date)}
                             </p>
                         </div>
                     </div>
@@ -148,7 +173,7 @@ export default function TournamentCard({
                         >
                             {tournament.tournament_type === TournamentType.TEAM ? 'View Teams' : 'View Leaderboard'}
                         </Button>
-                    ) : tournament.status === 'UPCOMING' || tournament.status === 'ACTIVE' ? (
+                    ) : actualStatus === 'REGISTRATION_OPEN' || actualStatus === 'UPCOMING' ? (
                         <>
                             <Button
                                 onClick={() => {
@@ -161,8 +186,10 @@ export default function TournamentCard({
                                 variant="success"
                                 className="flex-1"
                                 isLoading={isLoading}
+                                disabled={actualStatus === 'UPCOMING'}
                             >
-                                {tournament.tournament_type === TournamentType.TEAM ? 'View Teams' : 'Join Tournament'}
+                                {actualStatus === 'UPCOMING' ? 'Registration Closed' : 
+                                 tournament.tournament_type === TournamentType.TEAM ? 'View Teams' : 'Join Tournament'}
                             </Button>
                             <Button
                                 onClick={() => onViewDetails(tournament)}
@@ -171,6 +198,14 @@ export default function TournamentCard({
                                 Details
                             </Button>
                         </>
+                    ) : actualStatus === 'ACTIVE' ? (
+                        <Button
+                            onClick={() => onViewDetails(tournament)}
+                            variant="primary"
+                            className="flex-1"
+                        >
+                            View Leaderboard
+                        </Button>
                     ) : (
                         <Button
                             onClick={() => onViewDetails(tournament)}

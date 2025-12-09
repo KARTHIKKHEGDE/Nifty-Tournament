@@ -24,23 +24,61 @@ async def get_tournaments(
     db: Session = Depends(get_db)
 ):
     """
-    Get list of tournaments.
+    Get list of tournaments filtered by their actual time-based status.
     
     Args:
         status_filter: Optional status filter
+                      - UPCOMING: tournament hasn't started yet (start_date > now)
+                      - ACTIVE: tournament is currently running (start_date <= now < end_date)
+                      - COMPLETED: tournament has ended (end_date <= now)
+                      - None/All: Returns all tournaments
         
     Returns:
-        List of tournaments
+        List of tournaments with dynamically calculated status
     """
-    service = TournamentService(db)
+    from app.models.tournament import Tournament, TournamentStatus
+    from datetime import datetime, timezone
+    
+    now = datetime.now(timezone.utc)
+    
+    # Get all tournaments first
+    query = db.query(Tournament).order_by(Tournament.created_at.desc())
     
     if status_filter:
-        from app.models.tournament import Tournament, TournamentStatus
-        tournaments = db.query(Tournament).filter(
-            Tournament.status == TournamentStatus(status_filter)
-        ).all()
+        if status_filter == 'UPCOMING':
+            # Upcoming: tournament hasn't started yet (start_date > now)
+            tournaments = query.filter(
+                Tournament.start_date > now
+            ).all()
+        elif status_filter == 'ACTIVE':
+            # Active: tournament has started AND hasn't ended yet (start_date <= now < end_date)
+            tournaments = query.filter(
+                Tournament.start_date <= now,
+                Tournament.end_date > now
+            ).all()
+        elif status_filter == 'COMPLETED':
+            # Completed: tournament has ended (end_date <= now)
+            tournaments = query.filter(
+                Tournament.end_date <= now
+            ).all()
+        else:
+            tournaments = query.all()
     else:
-        tournaments = service.get_active_tournaments()
+        # Return only active and upcoming tournaments when no filter (exclude completed)
+        tournaments = query.filter(
+            Tournament.end_date > now
+        ).all()
+    
+    # Calculate actual status for each tournament based on current time
+    for tournament in tournaments:
+        if now >= tournament.end_date:
+            tournament.status = TournamentStatus.COMPLETED
+        elif now >= tournament.start_date and now < tournament.end_date:
+            tournament.status = TournamentStatus.ACTIVE
+        elif now < tournament.registration_deadline:
+            tournament.status = TournamentStatus.REGISTRATION_OPEN
+        else:
+            tournament.status = TournamentStatus.UPCOMING
     
     return tournaments
 

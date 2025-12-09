@@ -236,7 +236,22 @@ export const useAdminStore = create<AdminStore>((set, get) => ({
             get().fetchTournaments();
             return true;
         } catch (error: any) {
-            toast.error(error.response?.data?.detail || 'Failed to create tournament');
+            // Handle validation errors with more details
+            if (error.response?.status === 422 && error.response?.data?.detail) {
+                const detail = error.response.data.detail;
+                if (Array.isArray(detail)) {
+                    // Pydantic validation errors
+                    const errors = detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join(', ');
+                    toast.error(`Validation error: ${errors}`);
+                } else if (typeof detail === 'string') {
+                    toast.error(detail);
+                } else {
+                    toast.error('Validation error: Please check all fields');
+                }
+            } else {
+                toast.error(error.response?.data?.detail || 'Failed to create tournament');
+            }
+            console.error('Tournament creation error:', error.response?.data);
             return false;
         }
     },

@@ -197,7 +197,9 @@ export const isValidPassword = (password: string): boolean => {
 // Local storage utilities
 export const setLocalStorage = (key: string, value: any): void => {
     try {
-        localStorage.setItem(key, JSON.stringify(value));
+        // Store strings directly, objects as JSON
+        const valueToStore = typeof value === 'string' ? value : JSON.stringify(value);
+        localStorage.setItem(key, valueToStore);
     } catch (error) {
         console.error('Error saving to localStorage:', error);
     }
@@ -206,7 +208,15 @@ export const setLocalStorage = (key: string, value: any): void => {
 export const getLocalStorage = <T>(key: string, defaultValue: T): T => {
     try {
         const item = localStorage.getItem(key);
-        return item ? JSON.parse(item) : defaultValue;
+        if (!item) return defaultValue;
+        
+        // Try to parse as JSON, if it fails return the string as-is
+        try {
+            return JSON.parse(item);
+        } catch {
+            // If JSON parse fails, return the raw string (useful for tokens)
+            return item as T;
+        }
     } catch (error) {
         console.error('Error reading from localStorage:', error);
         return defaultValue;

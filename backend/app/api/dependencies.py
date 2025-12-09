@@ -34,9 +34,12 @@ async def get_current_user(
         HTTPException: If authentication fails
     """
     token = credentials.credentials
+    print(f"🔑 [AUTH] Received token: {token[:50]}..." if len(token) > 50 else f"🔑 [AUTH] Received token: {token}")
     user_id = verify_token(token)
+    print(f"✅ [AUTH] Token verified, user_id: {user_id}")
     
     if user_id is None:
+        print("❌ [AUTH] Token verification failed - user_id is None")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -89,6 +92,9 @@ async def get_current_admin_user(
 ) -> User:
     """
     Get current admin user.
+    Checks if user is admin by:
+    1. is_admin flag in database, OR
+    2. Email matches ADMIN_EMAIL from environment
     
     Args:
         current_user: Current user from get_current_user
@@ -99,7 +105,15 @@ async def get_current_admin_user(
     Raises:
         HTTPException: If user is not an admin
     """
-    if not current_user.is_admin:
+    import os
+    
+    # Check if user is admin in database OR has admin email from env
+    admin_email = os.getenv('ADMIN_EMAIL', '').strip().lower()
+    user_email = current_user.email.strip().lower()
+    
+    is_admin = current_user.is_admin or (admin_email and user_email == admin_email)
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required"

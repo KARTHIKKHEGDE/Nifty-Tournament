@@ -33,10 +33,17 @@ const AuditLogPage = () => {
         try {
             // We'll use the service directly since this might not be in the store yet
             const response = await adminService.getAuditLog({ limit: 100, offset: 0 }); // Fetch last 100 logs
-            setLogs(response.actions);
-        } catch (error) {
+            if (response && response.actions && Array.isArray(response.actions)) {
+                setLogs(response.actions);
+            } else {
+                console.error('Invalid response format:', response);
+                setLogs([]);
+                toast.error('Invalid response format from server');
+            }
+        } catch (error: any) {
             console.error('Failed to fetch audit logs:', error);
-            toast.error('Failed to load audit logs');
+            setLogs([]); // Ensure logs is always an array
+            toast.error(error?.response?.data?.detail || 'Failed to load audit logs');
         } finally {
             setLoading(false);
         }
@@ -54,6 +61,8 @@ const AuditLogPage = () => {
     };
 
     const filteredLogs = logs.filter(log => {
+        // Skip invalid entries
+        if (!log || !log.id || !log.action_type || !log.target_type) return false;
         if (filters.action_type && !log.action_type.includes(filters.action_type)) return false;
         if (filters.target_type && !log.target_type.includes(filters.target_type)) return false;
         return true;
@@ -173,7 +182,7 @@ const AuditLogPage = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className="px-2 py-1 text-xs font-semibold text-gray-300 bg-gray-600 rounded-full">
-                                                    {log.target_type} #{log.target_id}
+                                                    {log.target_type} {log.target_id ? `#${log.target_id}` : ''}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
@@ -183,7 +192,7 @@ const AuditLogPage = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <span className="text-sm text-gray-500 font-mono">
-                                                    {log.ip_address}
+                                                    {log.ip_address || 'N/A'}
                                                 </span>
                                             </td>
                                         </tr>

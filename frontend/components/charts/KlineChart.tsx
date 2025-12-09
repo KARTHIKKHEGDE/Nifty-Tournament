@@ -439,6 +439,16 @@ function KlineChartComponent({
 
   // Apply data
   const dataLengthRef = useRef(0);
+  const previousTimeframeRef = useRef(currentTimeframe);
+  
+  // Reset data length when timeframe changes to force full reload
+  useEffect(() => {
+    if (currentTimeframe !== previousTimeframeRef.current) {
+      console.log('🔄 [KlineChart] Timeframe changed, resetting data length ref');
+      dataLengthRef.current = 0;
+      previousTimeframeRef.current = currentTimeframe;
+    }
+  }, [currentTimeframe]);
   
   useEffect(() => {
     if (chartInstance.current && data.length > 0 && chartReady) {

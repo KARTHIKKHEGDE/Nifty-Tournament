@@ -9,7 +9,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 // Get auth token from localStorage
 const getAuthToken = () => {
     if (typeof window !== 'undefined') {
-        return localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
+        // Remove quotes if present
+        return token ? token.replace(/^["']|["']$/g, '') : null;
     }
     return null;
 };
@@ -60,7 +62,13 @@ export const getAllTournaments = async (filters?: {
     limit?: number;
     offset?: number;
 }) => {
-    const response = await adminApi.get('/tournaments', { params: filters });
+    // Map 'status' to 'status_filter' for the backend
+    const params = filters ? {
+        status_filter: filters.status,
+        limit: filters.limit,
+        offset: filters.offset
+    } : {};
+    const response = await adminApi.get('/tournaments', { params });
     return response.data;
 };
 

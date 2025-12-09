@@ -8,7 +8,7 @@ class TournamentService {
     async getTournaments(status?: string): Promise<Tournament[]> {
         try {
             const response = await api.get<Tournament[]>('/api/tournaments/', {
-                params: status ? { status } : {},
+                params: status ? { status_filter: status } : {},
             });
             return response.data;
         } catch (error) {

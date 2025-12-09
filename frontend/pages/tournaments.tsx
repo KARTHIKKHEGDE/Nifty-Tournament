@@ -23,113 +23,6 @@ export default function TournamentsPage() {
     const [showCreateTeam, setShowCreateTeam] = useState(false);
     const [filterStatus, setFilterStatus] = useState<string>('all');
 
-    // Mock tournaments data (in production, fetch from API)
-    const mockTournaments: Tournament[] = [
-        {
-            id: 1,
-            name: 'Weekly Trading Championship',
-            description: 'Compete with traders across India for the weekly championship title and win real money prizes!',
-            tournament_type: TournamentType.SOLO,
-            team_size: undefined,
-            start_date: '2024-01-22T09:15:00',
-            end_date: '2024-01-26T15:30:00',
-            entry_fee: 0,
-            prize_pool: 50000,
-            starting_balance: 100000,
-            registration_deadline: '2024-01-22T09:00:00',
-            max_participants: 100,
-            current_participants: 45,
-            status: TournamentStatus.ACTIVE,
-            created_at: '2024-01-15T00:00:00',
-        },
-        {
-            id: 2,
-            name: 'Options Master Challenge',
-            description: 'Test your options trading skills in this intense 3-day challenge. Top 10 traders win prizes!',
-            tournament_type: TournamentType.TEAM,
-            team_size: 3,
-            start_date: '2024-01-25T09:15:00',
-            end_date: '2024-01-27T15:30:00',
-            entry_fee: 100,
-            prize_pool: 100000,
-            starting_balance: 100000,
-            registration_deadline: '2024-01-25T09:00:00',
-            max_participants: 50,
-            current_participants: 12,
-            status: TournamentStatus.UPCOMING,
-            created_at: '2024-01-15T00:00:00',
-        },
-        {
-            id: 3,
-            name: 'Beginner Friendly Tournament',
-            description: 'Perfect for new traders! Free entry, learn and compete with fellow beginners.',
-            tournament_type: TournamentType.SOLO,
-            team_size: undefined,
-            start_date: '2024-01-29T09:15:00',
-            end_date: '2024-02-02T15:30:00',
-            entry_fee: 0,
-            prize_pool: 25000,
-            starting_balance: 100000,
-            registration_deadline: '2024-01-29T09:00:00',
-            max_participants: 200,
-            current_participants: 87,
-            status: TournamentStatus.UPCOMING,
-            created_at: '2024-01-15T00:00:00',
-        },
-    ];
-
-    // Mock leaderboard data
-    const mockLeaderboard: TournamentRanking[] = [
-        {
-            id: 1,
-            tournament_id: 1,
-            user_id: 1,
-            username: 'TradingPro',
-            total_pnl: 15000,
-            roi_percentage: 15.0,
-            total_trades: 45,
-            winning_trades: 32,
-            rank: 1,
-            updated_at: '2024-01-25T12:00:00',
-        },
-        {
-            id: 2,
-            tournament_id: 1,
-            user_id: 2,
-            username: 'OptionsKing',
-            total_pnl: 12500,
-            roi_percentage: 12.5,
-            total_trades: 38,
-            winning_trades: 26,
-            rank: 2,
-            updated_at: '2024-01-25T12:00:00',
-        },
-        {
-            id: 3,
-            tournament_id: 1,
-            user_id: 3,
-            username: 'NiftyTrader',
-            total_pnl: 10000,
-            roi_percentage: 10.0,
-            total_trades: 42,
-            winning_trades: 28,
-            rank: 3,
-            updated_at: '2024-01-25T12:00:00',
-        },
-        {
-            id: 4,
-            tournament_id: 1,
-            user_id: user?.id || 4,
-            username: user?.username || 'You',
-            total_pnl: 8500,
-            roi_percentage: 8.5,
-            total_trades: 35,
-            winning_trades: 22,
-            rank: 4,
-            updated_at: '2024-01-25T12:00:00',
-        },
-    ];
-
     useEffect(() => {
         loadTournaments();
     }, [filterStatus]);
@@ -137,10 +30,12 @@ export default function TournamentsPage() {
     const loadTournaments = async () => {
         setIsLoading(true);
         try {
-            // In production: const data = await tournamentService.getTournaments(filterStatus !== 'all' ? filterStatus : undefined);
-            const data = mockTournaments.filter(
-                (t) => filterStatus === 'all' || t.status === filterStatus.toUpperCase()
-            );
+            // Convert frontend filter to backend format
+            let statusParam: string | undefined = undefined;
+            if (filterStatus !== 'all') {
+                statusParam = filterStatus.toUpperCase();
+            }
+            const data = await tournamentService.getTournaments(statusParam);
             setTournaments(data);
         } catch (error) {
             console.error('Failed to load tournaments:', error);
@@ -152,9 +47,11 @@ export default function TournamentsPage() {
     const handleJoinTournament = async (tournamentId: number) => {
         setIsJoining(true);
         try {
-            // In production: await tournamentService.joinTournament(tournamentId);
+            await tournamentService.joinTournament(tournamentId);
             setJoinedTournaments((prev) => new Set(prev).add(tournamentId));
             alert('Successfully joined tournament!');
+            // Reload tournaments to update participant count
+            loadTournaments();
         } catch (error: any) {
             alert(error.message || 'Failed to join tournament');
         } finally {
@@ -170,10 +67,11 @@ export default function TournamentsPage() {
         } else {
             setShowLeaderboard(true);
             try {
-                // In production: const data = await tournamentService.getLeaderboard(tournament.id);
-                setLeaderboard(mockLeaderboard);
+                const data = await tournamentService.getLeaderboard(tournament.id);
+                setLeaderboard(data);
             } catch (error) {
                 console.error('Failed to load leaderboard:', error);
+                setLeaderboard([]);
             }
         }
     };

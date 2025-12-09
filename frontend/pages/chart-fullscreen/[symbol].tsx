@@ -27,7 +27,17 @@ export default function ChartFullscreen() {
             };
             
             setChartSymbol(symbolObj);
-            
+        }
+    }, [symbol, instrument_token]);
+
+    useEffect(() => {
+        console.log('🔄 [ChartFullscreen useEffect] Triggered with:', {
+            chartSymbol: chartSymbol?.symbol,
+            currentTimeframe,
+            instrumentToken: chartSymbol?.instrumentToken
+        });
+        
+        if (chartSymbol) {
             // Map frontend timeframe to backend format
             const mapTimeframeToBackend = (tf: string): string => {
                 const mapping: Record<string, string> = {
@@ -43,12 +53,19 @@ export default function ChartFullscreen() {
             };
             
             const backendTimeframe = mapTimeframeToBackend(currentTimeframe);
-            fetchCandles(decodedSymbol, parseInt(instrument_token as string), backendTimeframe, 200);
+            console.log('📡 [ChartFullscreen useEffect] Fetching candles:', backendTimeframe);
+            fetchCandles(chartSymbol.symbol, chartSymbol.instrumentToken!, backendTimeframe, 200);
+        } else {
+            console.log('⏸️ [ChartFullscreen useEffect] Skipping: No chartSymbol');
         }
-    }, [symbol, instrument_token]);
+    }, [chartSymbol, currentTimeframe, fetchCandles]);
 
     const handleTimeframeChange = (timeframe: string) => {
+        console.log('🔄 [ChartFullscreen] Timeframe change requested:', timeframe);
+        console.log('📊 [ChartFullscreen] Current symbol:', chartSymbol);
+        
         setCurrentTimeframe(timeframe);
+        
         if (chartSymbol) {
             const mapTimeframeToBackend = (tf: string): string => {
                 const mapping: Record<string, string> = {
@@ -64,7 +81,16 @@ export default function ChartFullscreen() {
             };
             
             const backendTimeframe = mapTimeframeToBackend(timeframe);
+            console.log('📡 [ChartFullscreen] Calling fetchCandles with:', {
+                symbol: chartSymbol.symbol,
+                instrumentToken: chartSymbol.instrumentToken,
+                backendTimeframe,
+                limit: 200
+            });
+            
             fetchCandles(chartSymbol.symbol, chartSymbol.instrumentToken!, backendTimeframe, 200);
+        } else {
+            console.warn('⚠️ [ChartFullscreen] No chartSymbol available');
         }
     };
 
