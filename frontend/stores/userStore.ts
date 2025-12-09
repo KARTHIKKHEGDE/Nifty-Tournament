@@ -27,7 +27,13 @@ export const useUserStore = create<UserStore>((set) => ({
 
     setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-    setWallet: (wallet) => set({ wallet }),
+    setWallet: (wallet) => {
+        set({ wallet });
+        // Persist to localStorage
+        if (wallet) {
+            localStorage.setItem('wallet', JSON.stringify(wallet));
+        }
+    },
 
     loadUser: async () => {
         set({ isLoading: true, error: null });
@@ -48,7 +54,24 @@ export const useUserStore = create<UserStore>((set) => ({
 
             // Fetch fresh user data from API
             const user = await authService.getCurrentUser();
-            set({ user, isAuthenticated: true, isLoading: false });
+            
+            // Initialize wallet with default balance if not exists
+            const cachedWallet = getLocalStorage<Wallet | null>('wallet', null);
+            const wallet: Wallet = cachedWallet || {
+                id: user.id,
+                user_id: user.id,
+                balance: 1000000, // Default 10 Lakhs for demo trading
+                currency: 'INR',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            
+            // Save wallet to localStorage
+            if (!cachedWallet) {
+                localStorage.setItem('wallet', JSON.stringify(wallet));
+            }
+            
+            set({ user, wallet, isAuthenticated: true, isLoading: false });
         } catch (error: any) {
             set({
                 user: null,

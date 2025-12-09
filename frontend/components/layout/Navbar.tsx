@@ -11,13 +11,16 @@ import {
     PieChart,
     Trophy,
     BarChart2,
+    Wallet,
 } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
+import WalletModal from '../modals/WalletModal';
 
 export default function MainNavbar() {
     const router = useRouter();
-    const { user, logout } = useUserStore();
+    const { user, wallet, logout } = useUserStore();
     const [showUserMenu, setShowUserMenu] = React.useState(false);
+    const [showWalletModal, setShowWalletModal] = React.useState(false);
 
     const handleLogout = () => {
         logout();
@@ -68,23 +71,36 @@ export default function MainNavbar() {
                     })}
                 </div>
 
-                {/* Right: User Menu */}
-                <div className="relative">
+                {/* Right: Wallet & User Menu */}
+                <div className="flex items-center gap-3">
+                    {/* Wallet Balance */}
                     <button
-                        onClick={() => setShowUserMenu(!showUserMenu)}
-                        className="flex items-center gap-2 hover:bg-gray-800 px-3 py-2 rounded transition-colors"
+                        onClick={() => setShowWalletModal(true)}
+                        className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-900/30 to-emerald-900/30 hover:from-green-900/50 hover:to-emerald-900/50 border border-green-700/30 rounded-lg transition-all group"
                     >
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">
-                                {user?.username?.substring(0, 2).toUpperCase() || 'US'}
-                            </span>
-                        </div>
-                        <span className="text-sm text-gray-300">{user?.username}</span>
-                        <ChevronDown
-                            className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''
-                                }`}
-                        />
+                        <Wallet className="w-4 h-4 text-green-400 group-hover:scale-110 transition-transform" />
+                        <span className="text-sm font-semibold text-green-400">
+                            ₹{wallet?.balance.toLocaleString('en-IN', { maximumFractionDigits: 0 }) || '0'}
+                        </span>
                     </button>
+
+                    {/* User Menu */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className="flex items-center gap-2 hover:bg-gray-800 px-3 py-2 rounded transition-colors"
+                        >
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-white">
+                                    {user?.username?.substring(0, 2).toUpperCase() || 'US'}
+                                </span>
+                            </div>
+                            <span className="text-sm text-gray-300">{user?.username}</span>
+                            <ChevronDown
+                                className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''
+                                    }`}
+                            />
+                        </button>
 
                     {showUserMenu && (
                         <>
@@ -106,11 +122,13 @@ export default function MainNavbar() {
                                         className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-800 rounded text-sm text-gray-300 transition-colors"
                                     >
                                         <User className="w-4 h-4" />
-                                        My Profile
+                                        Profile
                                     </button>
-                                    <div className="h-px bg-gray-700 my-1" />
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            handleLogout();
+                                        }}
                                         className="w-full flex items-center gap-3 px-3 py-2 hover:bg-red-900/20 rounded text-sm text-red-400 transition-colors"
                                     >
                                         <LogOut className="w-4 h-4" />
@@ -120,8 +138,15 @@ export default function MainNavbar() {
                             </div>
                         </>
                     )}
+                    </div>
                 </div>
             </div>
+
+            {/* Wallet Modal */}
+            <WalletModal 
+                isOpen={showWalletModal} 
+                onClose={() => setShowWalletModal(false)} 
+            />
         </nav>
     );
 }
