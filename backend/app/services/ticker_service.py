@@ -39,7 +39,7 @@ class ZerodhaTickerService:
         self.ticker = KiteTicker(api_key, access_token)
         self._setup_callbacks()
 
-        logger.info("✓ MarketTickerService initialized")
+        logger.info("✓ ZerodhaTickerService initialized")
 
     def _setup_callbacks(self):
         """Setup KiteTicker callbacks"""
@@ -203,10 +203,10 @@ class ZerodhaTickerService:
 
 
 # Singleton instance
-_ticker_service: Optional[MarketTickerService] = None
+_ticker_service: Optional[ZerodhaTickerService] = None
 
 
-def get_ticker_service() -> Optional[MarketTickerService]:
+def get_ticker_service() -> Optional[ZerodhaTickerService]:
     """Get or create WebSocket Ticker service singleton"""
     global _ticker_service
     
@@ -219,7 +219,7 @@ def get_ticker_service() -> Optional[MarketTickerService]:
         return None
     
     if _ticker_service is None:
-        _ticker_service = MarketTickerService(
+        _ticker_service = ZerodhaTickerService(
             api_key=settings.MARKET_API_KEY,
             access_token=settings.MARKET_ACCESS_TOKEN
         )

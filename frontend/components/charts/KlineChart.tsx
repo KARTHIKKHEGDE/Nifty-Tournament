@@ -423,6 +423,8 @@ function KlineChartComponent({
   }, [showVolume, onLoadMore]);
 
   // Apply data
+  const dataLengthRef = useRef(0);
+  
   useEffect(() => {
     if (chartInstance.current && data.length > 0 && chartReady) {
       const formattedData = data.map((candle) => ({
@@ -435,7 +437,16 @@ function KlineChartComponent({
       }));
 
       try {
-        chartInstance.current.applyNewData(formattedData);
+        // Use applyNewData only for initial load or when data is reset
+        if (dataLengthRef.current === 0 || data.length < dataLengthRef.current - 50) {
+          console.log('📊 [KlineChart] Initial data load or reset detected, using applyNewData');
+          chartInstance.current.applyNewData(formattedData);
+        } else {
+          // Use updateData for incremental updates to preserve chart state (drag/zoom)
+          console.log('📊 [KlineChart] Incremental update, using updateData');
+          chartInstance.current.updateData(formattedData[formattedData.length - 1]);
+        }
+        dataLengthRef.current = data.length;
       } catch (error) {
         console.error('Error applying chart data:', error);
       }
@@ -916,22 +927,21 @@ function KlineChartComponent({
     }
 
     const params = new URLSearchParams({
-      symbol: symbol,
       instrument_token: instrumentToken.toString(),
       timeframe: selectedTimeframe,
     });
 
     const encodedSymbol = symbol.replace(/\s+/g, '-');
-    const url = `/chart/${encodedSymbol}?${params.toString()}`;
-    console.log('📊 Opening chart in new tab:', url);
+    const url = `/chart-fullscreen/${encodedSymbol}?${params.toString()}`;
+    console.log('📊 Opening fullscreen chart in new window:', url);
 
     const newWindow = window.open(url, '_blank', 'width=1400,height=900');
 
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
       console.warn('⚠️ Popup blocked! Opening in same tab instead');
-      window.location.href = url;
+      window.open(url, '_blank');
     } else {
-      console.log('✅ Chart window opened successfully');
+      console.log('✅ Fullscreen chart window opened successfully');
     }
   };
 

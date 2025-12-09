@@ -62,7 +62,7 @@ export default function DashboardHome() {
             setSelectedSymbol(chartSymbol);
             setShowChart(true);
             
-            // Fetch chart data if on chart route
+            // Fetch chart data if on chart route (only on initial load or symbol/token change)
             if (isChartRoute && instrument_token) {
                 const backendTimeframe = mapTimeframeToBackend(currentTimeframe);
                 fetchCandles(decodedSymbol, parseInt(instrument_token as string), backendTimeframe, 200);
@@ -78,7 +78,7 @@ export default function DashboardHome() {
                 setShowChart(false);
             }
         }
-    }, [router.pathname, router.query]);
+    }, [router.pathname, router.query.symbol, router.query.instrument_token]);
 
     // Debug: Component mount
     useEffect(() => {
@@ -185,10 +185,10 @@ export default function DashboardHome() {
     }, [activeTab, selectedSymbol, fetchOptionsChain]);
 
     // Debug effect to monitor candles state
-    useEffect(() => {
-        console.log('📊 [Candles State Changed] Length:', candles.length);
-        console.log('📊 [Candles State Changed] Data:', candles.slice(0, 3));
-    }, [candles]);
+    // useEffect(() => {
+    //     console.log('📊 [Candles State Changed] Length:', candles.length);
+    //     console.log('📊 [Candles State Changed] Data:', candles.slice(0, 3));
+    // }, [candles]);
 
     // Mock recent orders (you can replace with real API call)
     const recentOrders = orders.slice(0, 10);

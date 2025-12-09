@@ -123,7 +123,7 @@ export function useChartData(options: UseChartDataOptions = {}) {
 
             // Listen for tick updates
             console.log(`👂 [useChartData] Setting up tick listener for: ${symbol}`);
-            unsubscribeFn = wsService.on('tick', (tickData: TickData) => {
+            const tickUnsubscribe = wsService.on('tick', (tickData: TickData) => {
                 console.log(`📈 [useChartData] Tick received:`, tickData);
 
                 if (tickData.symbol === symbol && candleBuilderRef.current) {
@@ -155,6 +155,35 @@ export function useChartData(options: UseChartDataOptions = {}) {
                     }
                 }
             });
+            
+            // Listen for completed candles from backend
+            const candleUnsubscribe = wsService.on('candle', (data: any) => {
+                console.log(`🕯️ [useChartData] Completed candle received from backend:`, data);
+                if (data.symbol === symbol && data.candle) {
+                    setCandles(prev => [...prev, data.candle]);
+                }
+            });
+            
+            // Listen for real-time candle updates from backend
+            const candleUpdateUnsubscribe = wsService.on('candle_update', (data: any) => {
+                console.log(`🔄 [useChartData] Candle update received from backend:`, data);
+                if (data.symbol === symbol && data.candle) {
+                    setCandles(prev => {
+                        const lastCandle = prev[prev.length - 1];
+                        if (lastCandle && lastCandle.timestamp === data.candle.timestamp) {
+                            return [...prev.slice(0, -1), data.candle];
+                        } else {
+                            return [...prev, data.candle];
+                        }
+                    });
+                }
+            });
+            
+            unsubscribeFn = () => {
+                tickUnsubscribe();
+                candleUnsubscribe();
+                candleUpdateUnsubscribe();
+            };
 
             console.log(`✅ [useChartData] WebSocket setup complete for: ${symbol}`);
 
@@ -182,7 +211,7 @@ export function useChartData(options: UseChartDataOptions = {}) {
                 console.error('❌ [useChartData] Cleanup error:', err);
             }
         };
-    }, [currentSymbolRef.current, currentTimeframeRef.current]);
+    }, []);
 
     const refreshCandles = useCallback(async (
         symbol: string,

@@ -181,6 +181,7 @@ async def broadcast_price_update(symbol: str, price: float, volume: int = 0, tim
 async def broadcast_tick_data(tick_data: Dict[str, Any]):
     """
     Broadcast tick data from market data API to subscribers.
+    Also builds real-time candles and broadcasts completed candles.
     
     Args:
         tick_data: Tick data dictionary from market data API
@@ -190,9 +191,49 @@ async def broadcast_tick_data(tick_data: Dict[str, Any]):
     if not symbol:
         return
     
-    message = {
+    # Build real-time candle from tick
+    from app.services.candle_builder import get_candle_builder
+    from datetime import datetime
+    
+    candle_builder = get_candle_builder(timeframe_seconds=60)  # 1-minute candles
+    
+    price = tick_data.get("last_price", 0)
+    volume = tick_data.get("volume", 0)
+    timestamp = tick_data.get("timestamp")
+    
+    if timestamp:
+        timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+    
+    # Process tick and check if a candle is completed
+    completed_candle = candle_builder.process_tick(symbol, price, volume, timestamp)
+    
+    # Broadcast live tick data
+    tick_message = {
         "type": "tick",
         "data": tick_data
     }
+    await manager.broadcast_to_symbol(symbol, tick_message)
     
-    await manager.broadcast_to_symbol(symbol, message)
+    # If a candle was completed, broadcast it
+    if completed_candle:
+        candle_message = {
+            "type": "candle",
+            "data": {
+                "symbol": symbol,
+                "candle": completed_candle
+            }
+        }
+        await manager.broadcast_to_symbol(symbol, candle_message)
+        logger.info(f"Broadcasted completed candle for {symbol}")
+    
+    # Also broadcast current (incomplete) candle for live updates
+    current_candle = candle_builder.get_current_candle(symbol)
+    if current_candle:
+        current_candle_message = {
+            "type": "candle_update",
+            "data": {
+                "symbol": symbol,
+                "candle": current_candle
+            }
+        }
+        await manager.broadcast_to_symbol(symbol, current_candle_message)

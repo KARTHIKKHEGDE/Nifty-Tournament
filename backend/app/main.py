@@ -72,11 +72,14 @@ async def startup_event():
         
         ticker_service = get_ticker_service()
         if ticker_service:
+            # Get the main event loop
+            loop = asyncio.get_event_loop()
+            
             # Set callback to broadcast ticks to WebSocket clients
             def tick_callback(tick_data):
-                # Run async broadcast in event loop
+                # Schedule coroutine in the main event loop from another thread
                 try:
-                    asyncio.create_task(broadcast_tick_data(tick_data))
+                    asyncio.run_coroutine_threadsafe(broadcast_tick_data(tick_data), loop)
                 except Exception as e:
                     logger.error(f"Error broadcasting tick data: {e}")
             

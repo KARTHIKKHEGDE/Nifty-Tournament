@@ -46,7 +46,6 @@ export const useSymbolStore = create<SymbolStore>((set, get) => ({
             // Check if symbol already exists
             const exists = state.watchlist.some((item) => item.symbol === symbol.symbol);
             if (exists) {
-                console.log(`⚠️ ${symbol.symbol} already in watchlist`);
                 return state;
             }
             return {
@@ -131,13 +130,11 @@ export const useSymbolStore = create<SymbolStore>((set, get) => ({
                             ltp = todayCandle.close;
                             change = ltp - yesterdayCandle.close;
                             changePercent = (change / yesterdayCandle.close) * 100;
-                            console.log(`📊 ${item.symbol} (LIVE): Yest=${yesterdayCandle.close}, Now=${ltp}, Chg=${changePercent.toFixed(2)}%`);
                         } else {
                             // MARKET CLOSED or HOLIDAY: Today's close vs yesterday's close
                             ltp = todayCandle.close;
                             change = todayCandle.close - yesterdayCandle.close;
                             changePercent = (change / yesterdayCandle.close) * 100;
-                            console.log(`📊 ${item.symbol} (CLOSED): Yest=${yesterdayCandle.close}, Today=${todayCandle.close}, Chg=${changePercent.toFixed(2)}%`);
                         }
 
                         return { symbol: item.symbol, ltp, change, changePercent };
@@ -168,8 +165,6 @@ export const useSymbolStore = create<SymbolStore>((set, get) => ({
                     );
                 }
             });
-
-            console.log('✅ Watchlist updated (from yesterday close)');
         } catch (error) {
             console.error('❌ Failed to fetch watchlist:', error);
         }
