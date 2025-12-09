@@ -243,19 +243,36 @@ function KlineChartComponent({
                 },
                 bars: [
                   {
-                    style: 'solid',
-                    color: '#2962ff',
-                    size: 1,
+                    style: 'fill',
+                    borderStyle: 'solid',
+                    borderSize: 1,
+                    borderDashedValue: [2, 2],
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    noChangeColor: '#888888',
                   },
+                ],
+                lines: [
                   {
                     style: 'solid',
+                    smooth: false,
+                    size: 1,
+                    dashedValue: [2, 2],
                     color: '#ff6d00',
-                    size: 1,
                   },
                   {
                     style: 'solid',
-                    color: '#ab47bc',
+                    smooth: false,
                     size: 1,
+                    dashedValue: [2, 2],
+                    color: '#2962ff',
+                  },
+                  {
+                    style: 'solid',
+                    smooth: false,
+                    size: 1,
+                    dashedValue: [2, 2],
+                    color: '#ab47bc',
                   },
                 ],
               },
@@ -385,10 +402,8 @@ function KlineChartComponent({
           });
 
           if (showVolume) {
-            chartInstance.current.createIndicator('VOL', false, {
-              id: 'volume_pane',
-              height: 80,
-            });
+            // Create volume indicator in separate pane
+            chartInstance.current.createIndicator('VOL', false, { height: 100 });
           }
 
           setChartReady(true);
