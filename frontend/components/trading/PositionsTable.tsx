@@ -1,24 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { PaperPosition } from '../../types';
-import { formatCurrency, formatPercentage, getPriceColor } from '../../utils/formatters';
+import React, { useEffect, useState, useRef } from 'react';
+import { PaperPosition, TickData } from '../../types';
+import { formatCurrency, getPriceColor } from '../../utils/formatters';
 import tradingService from '../../services/tradingService';
+import tournamentService from '../../services/tournamentService';
 import Card from '../common/Card';
 import Loader from '../common/Loader';
 import { X, TrendingUp, TrendingDown } from 'lucide-react';
+import { TradingMode } from '../../types/tournament-trading';
+import wsService from '../../services/websocket';
 
-export default function PositionsTable() {
+interface PositionsTableProps {
+    mode?: TradingMode;
+    contextId?: string | null;
+}
+
+export default function PositionsTable({ mode = 'demo', contextId = null }: PositionsTableProps) {
     const [positions, setPositions] = useState<PaperPosition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showMode, setShowMode] = useState<'day' | 'net'>('day');
     const [pnlMode, setPnlMode] = useState<'amount' | 'percent'>('amount');
+    const positionsRef = useRef<PaperPosition[]>([]);
+    // Safety: Track if component is mounted
+    const isMounted = useRef(true);
 
     const loadPositions = async (showLoading = false) => {
         if (showLoading) {
             setIsLoading(true);
         }
         try {
-            const data = await tradingService.getPositions();
+            const data = mode === 'tournament' && contextId
+                ? await tournamentService.getTournamentPositions(contextId)
+                : await tradingService.getPositions();
             setPositions(data);
+            positionsRef.current = data;
         } catch (error) {
             console.error('Failed to load positions:', error);
         } finally {
@@ -32,14 +46,74 @@ export default function PositionsTable() {
         // Initial load with loading indicator
         loadPositions(true);
 
-        // Refresh positions every 3 seconds silently (no loading indicator)
-        const interval = setInterval(() => loadPositions(false), 3000);
+        // Refresh positions every 5 seconds silently (no loading indicator)
+        const interval = setInterval(() => loadPositions(false), 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [mode, contextId]);
+
+    // Subscribe to WebSocket ticks for real-time price updates
+    // Direct DOM updates - ZERO re-renders like professional platforms
+    useEffect(() => {
+        console.log('📡 [PositionsTable] Setting up WebSocket tick listener for live prices');
+        
+        const unsubscribe = wsService.on('tick', (tickData: TickData) => {
+            // Safety: Check if component is still mounted
+            if (!isMounted.current) return;
+            
+            // Update ref data immediately (no re-render)
+            let positionIndex = -1;
+            positionsRef.current = positionsRef.current.map((pos, idx) => {
+                // Match by symbol or tradingsymbol
+                if (pos.symbol === tickData.symbol || pos.tradingsymbol === tickData.symbol) {
+                    positionIndex = idx;
+                    return {
+                        ...pos,
+                        ltp: tickData.price,
+                        current_price: tickData.price,
+                    };
+                }
+                return pos;
+            });
+            
+            // Direct DOM update - NO React re-render
+            if (positionIndex !== -1) {
+                const position = positionsRef.current[positionIndex];
+                const ltp = position.ltp || position.current_price || position.average_price;
+                const pnl = (ltp - position.average_price) * position.quantity;
+                const pnlPercent = ((ltp - position.average_price) / position.average_price) * 100;
+                const isProfitable = pnl >= 0;
+                
+                // Update LTP in DOM
+                const ltpElement = document.querySelector(`[data-position-ltp="${position.id}"]`);
+                if (ltpElement) {
+                    ltpElement.textContent = `₹${ltp.toFixed(2)}`;
+                }
+                
+                // Update P&L in DOM
+                const pnlElement = document.querySelector(`[data-position-pnl="${position.id}"]`);
+                if (pnlElement) {
+                    pnlElement.textContent = pnlMode === 'amount' 
+                        ? `${isProfitable ? '+' : ''}₹${Math.abs(pnl).toFixed(2)}`
+                        : `${isProfitable ? '+' : ''}${pnlPercent.toFixed(2)}%`;
+                    pnlElement.className = `text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`;
+                }
+            }
+        });
+
+        return () => {
+            console.log('🧹 [PositionsTable] Cleaning up WebSocket tick listener');
+            isMounted.current = false;
+            unsubscribe();
+        };
+    }, [pnlMode]);
 
     const handleClosePosition = async (positionId: number) => {
         try {
-            await tradingService.closePosition(positionId);
+            if (mode === 'tournament' && contextId) {
+                await tournamentService.closeTournamentPosition(contextId, positionId);
+            } else {
+                await tradingService.closePosition(positionId);
+            }
             loadPositions(true);
         } catch (error) {
             console.error('Failed to close position:', error);
@@ -113,10 +187,22 @@ export default function PositionsTable() {
                     </button>
                 </div>
 
-                {/* ₹ / % Toggle */}
+                {/* ₹ / % Toggle - Controlled re-render for button state */}
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setPnlMode('amount')}
+                        onClick={() => {
+                            setPnlMode('amount'); // Single re-render for UI state
+                            // Update all P&L displays in DOM immediately
+                            positionsRef.current.forEach(pos => {
+                                const ltp = pos.ltp || pos.current_price || pos.average_price;
+                                const pnl = (ltp - pos.average_price) * pos.quantity;
+                                const isProfitable = pnl >= 0;
+                                const pnlElement = document.querySelector(`[data-position-pnl="${pos.id}"]`);
+                                if (pnlElement) {
+                                    pnlElement.textContent = `${isProfitable ? '+' : ''}₹${Math.abs(pnl).toFixed(2)}`;
+                                }
+                            });
+                        }}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'amount'
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -125,7 +211,19 @@ export default function PositionsTable() {
                         ₹
                     </button>
                     <button
-                        onClick={() => setPnlMode('percent')}
+                        onClick={() => {
+                            setPnlMode('percent');
+                            // Update all P&L displays in DOM immediately
+                            positionsRef.current.forEach(pos => {
+                                const ltp = pos.ltp || pos.current_price || pos.average_price;
+                                const pnlPercent = ((ltp - pos.average_price) / pos.average_price) * 100;
+                                const isProfitable = pnlPercent >= 0;
+                                const pnlElement = document.querySelector(`[data-position-pnl="${pos.id}"]`);
+                                if (pnlElement) {
+                                    pnlElement.textContent = `${isProfitable ? '+' : ''}${pnlPercent.toFixed(2)}%`;
+                                }
+                            });
+                        }}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${pnlMode === 'percent'
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -192,7 +290,7 @@ export default function PositionsTable() {
                                 </div>
                                 <div>
                                     <span className="text-gray-400">LTP: </span>
-                                    <span className="text-white font-medium">
+                                    <span className="text-white font-medium" data-position-ltp={position.id}>
                                         {formatCurrency(ltp)}
                                     </span>
                                 </div>
@@ -213,12 +311,18 @@ export default function PositionsTable() {
 
                             {/* Row 3: P&L */}
                             <div className="flex items-center justify-between">
-                                <div className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
-                                    P&L: {pnlMode === 'amount' ? (
-                                        <span>{isProfitable ? '+' : ''}{formatCurrency(pnl)}</span>
-                                    ) : (
-                                        <span>{isProfitable ? '+' : ''}{pnlPercent.toFixed(2)}%</span>
-                                    )}
+                                <div>
+                                    <span className="text-gray-400 text-sm">P&L: </span>
+                                    <span 
+                                        className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}
+                                        data-position-pnl={position.id}
+                                    >
+                                        {pnlMode === 'amount' ? (
+                                            <>{isProfitable ? '+' : ''}{formatCurrency(pnl)}</>
+                                        ) : (
+                                            <>{isProfitable ? '+' : ''}{pnlPercent.toFixed(2)}%</>
+                                        )}
+                                    </span>
                                 </div>
 
                                 {/* Action Buttons */}

@@ -19,6 +19,7 @@ class PaperPosition(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tournament_id = Column(Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=True, index=True)
     
     # Instrument details
     tradingsymbol = Column(String, nullable=False, index=True)  # Full trading symbol (e.g., NIFTY24NOV24000CE)

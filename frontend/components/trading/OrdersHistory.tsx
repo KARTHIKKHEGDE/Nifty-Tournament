@@ -3,14 +3,19 @@ import { X } from 'lucide-react';
 import { PaperOrder } from '../../types';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 import tradingService from '../../services/tradingService';
+import tournamentService from '../../services/tournamentService';
 import Button from '../common/Button';
 import Loader from '../common/Loader';
+import { TradingMode } from '../../types/tournament-trading';
+import ws from '../../services/websocket';
 
 interface OrdersHistoryProps {
     refreshTrigger?: number;
+    mode?: TradingMode;
+    contextId?: string | null;
 }
 
-export default function OrdersHistory({ refreshTrigger }: OrdersHistoryProps) {
+export default function OrdersHistory({ refreshTrigger, mode = 'demo', contextId = null }: OrdersHistoryProps) {
     const [orders, setOrders] = useState<PaperOrder[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
@@ -18,7 +23,9 @@ export default function OrdersHistory({ refreshTrigger }: OrdersHistoryProps) {
     const loadOrders = async () => {
         setIsLoading(true);
         try {
-            const data = await tradingService.getOrders();
+            const data = mode === 'tournament' && contextId
+                ? await tournamentService.getTournamentOrders(contextId)
+                : await tradingService.getOrders();
             setOrders(data);
         } catch (error) {
             console.error('Failed to load orders:', error);
@@ -30,8 +37,27 @@ export default function OrdersHistory({ refreshTrigger }: OrdersHistoryProps) {
     useEffect(() => {
         if (isOpen) {
             loadOrders();
+            
+            // Setup websocket listener for real-time updates
+            const orderEvent = mode === 'tournament' && contextId
+                ? `tournament:${contextId}:order`
+                : 'paper:order:update';
+            
+            ws.on(orderEvent, (order: any) => {
+                setOrders(prev => {
+                    const idx = prev.findIndex(o => o.id === order.id);
+                    if (idx === -1) return [order, ...prev];
+                    const copy = [...prev];
+                    copy[idx] = { ...copy[idx], ...order };
+                    return copy;
+                });
+            });
+            
+            return () => {
+                ws.off(orderEvent);
+            };
         }
-    }, [isOpen, refreshTrigger]);
+    }, [isOpen, refreshTrigger, mode, contextId]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -55,7 +81,11 @@ export default function OrdersHistory({ refreshTrigger }: OrdersHistoryProps) {
 
     const handleCancel = async (orderId: number) => {
         try {
-            await tradingService.cancelOrder(orderId);
+            if (mode === 'tournament' && contextId) {
+                await tournamentService.cancelTournamentOrder(contextId, orderId);
+            } else {
+                await tradingService.cancelOrder(orderId);
+            }
             loadOrders();
         } catch (error) {
             console.error('Failed to cancel order:', error);

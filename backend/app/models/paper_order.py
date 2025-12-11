@@ -72,6 +72,7 @@ class PaperOrder(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tournament_id = Column(Integer, ForeignKey("tournaments.id", ondelete="CASCADE"), nullable=True, index=True)
     
     # Instrument details
     symbol = Column(String, nullable=False, index=True)
@@ -88,7 +89,12 @@ class PaperOrder(Base):
     # Execution details
     executed_price = Column(Float, nullable=True)
     executed_quantity = Column(Integer, default=0, nullable=False)
+    average_price = Column(Float, nullable=True)  # Weighted average execution price
+    filled_quantity = Column(Integer, default=0, nullable=False)  # Alias for executed_quantity
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.PENDING, nullable=False)
+    
+    # P&L tracking
+    realized_pnl = Column(Float, default=0.0, nullable=True)  # P&L from this order
     
     # Risk management
     stop_loss = Column(Float, nullable=True)

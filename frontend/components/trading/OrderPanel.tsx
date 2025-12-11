@@ -5,17 +5,22 @@ import Card from '../common/Card';
 import { OrderType, OrderSide } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import tradingService from '../../services/tradingService';
+import tournamentService from '../../services/tournamentService';
 import { useTradingStore } from '../../stores/tradingStore';
 import { useUserStore } from '../../stores/userStore';
+import { TradingMode } from '../../types/tournament-trading';
 
 interface OrderPanelProps {
     symbol: string;
     currentPrice: number;
     instrumentType?: 'INDEX' | 'CE' | 'PE';
     initialSide?: OrderSide;
+    mode?: TradingMode;
+    contextId?: string | null;
+    tournamentBalance?: number;
 }
 
-export default function OrderPanel({ symbol, currentPrice, instrumentType = 'INDEX', initialSide = OrderSide.BUY }: OrderPanelProps) {
+export default function OrderPanel({ symbol, currentPrice, instrumentType = 'INDEX', initialSide = OrderSide.BUY, mode = 'demo', contextId = null, tournamentBalance }: OrderPanelProps) {
     const { wallet } = useUserStore();
     const { addOrder, triggerOrderRefresh } = useTradingStore();
 
@@ -54,7 +59,7 @@ export default function OrderPanel({ symbol, currentPrice, instrumentType = 'IND
         }
 
         const total = calculateTotal();
-        const availableBalance = wallet?.balance || 0;
+        const availableBalance = mode === 'tournament' ? (tournamentBalance || 0) : (wallet?.balance || 0);
 
         if (side === OrderSide.BUY && total > availableBalance) {
             setError('Insufficient balance');
@@ -75,7 +80,9 @@ export default function OrderPanel({ symbol, currentPrice, instrumentType = 'IND
                 take_profit: takeProfit > 0 ? takeProfit : undefined,
             };
 
-            const order = await tradingService.placeOrder(orderData);
+            const order = mode === 'tournament' && contextId
+                ? await tournamentService.placeTournamentOrder(contextId, orderData)
+                : await tradingService.placeOrder(orderData);
             addOrder(order);
             triggerOrderRefresh();
 
@@ -206,7 +213,7 @@ export default function OrderPanel({ symbol, currentPrice, instrumentType = 'IND
                     <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Available Balance:</span>
                         <span className="text-white font-semibold">
-                            {formatCurrency(wallet?.balance || 0)}
+                            {formatCurrency(mode === 'tournament' ? (tournamentBalance || 0) : (wallet?.balance || 0))}
                         </span>
                     </div>
                 </div>
@@ -235,10 +242,10 @@ export default function OrderPanel({ symbol, currentPrice, instrumentType = 'IND
                     {side === OrderSide.BUY ? 'Place Buy Order' : 'Place Sell Order'}
                 </Button>
 
-                {/* Paper Trading Notice */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                    <p className="text-xs text-blue-400 text-center">
-                        <strong>Paper Trading:</strong> This is a simulated order with virtual money
+                {/* Trading Notice */}
+                <div className={mode === 'tournament' ? "bg-purple-500/10 border border-purple-500/30 rounded-lg p-3" : "bg-blue-500/10 border border-blue-500/30 rounded-lg p-3"}>
+                    <p className="text-xs text-center" style={{ color: mode === 'tournament' ? '#c084fc' : '#60a5fa' }}>
+                        <strong>{mode === 'tournament' ? 'Tournament Mode:' : 'Paper Trading:'}</strong> {mode === 'tournament' ? 'Virtual tournament capital' : 'Simulated order with virtual money'}
                     </p>
                 </div>
             </form>

@@ -199,13 +199,21 @@ export default function TournamentCard({
                             </Button>
                         </>
                     ) : actualStatus === 'ACTIVE' ? (
-                        <Button
-                            onClick={() => onViewDetails(tournament)}
-                            variant="primary"
-                            className="flex-1"
-                        >
-                            View Leaderboard
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => window.location.href = `/tournament/${tournament.id}/trade`}
+                                variant="success"
+                                className="flex-1"
+                            >
+                                🎮 Trade Now
+                            </Button>
+                            <Button
+                                onClick={() => onViewDetails(tournament)}
+                                variant="secondary"
+                            >
+                                Leaderboard
+                            </Button>
+                        </div>
                     ) : (
                         <Button
                             onClick={() => onViewDetails(tournament)}

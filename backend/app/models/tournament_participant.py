@@ -46,8 +46,12 @@ class TournamentParticipant(Base):
     
     # Trading stats
     starting_balance = Column(Float, nullable=False)
+    initial_balance = Column(Float, nullable=False)  # Alias for starting_balance for API compatibility
     current_balance = Column(Float, nullable=False)
     total_pnl = Column(Float, default=0.0, nullable=False)
+    pnl = Column(Float, default=0.0, nullable=False)  # Alias for total_pnl for API compatibility
+    rank = Column(Integer, nullable=True)  # Current rank in tournament
+    is_active = Column(Boolean, default=True, nullable=False)  # Whether participant is still active
     
     # Trade statistics
     total_trades = Column(Integer, default=0, nullable=False)

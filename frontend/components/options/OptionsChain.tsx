@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { BarChart2, Plus } from 'lucide-react';
-import { OptionData, OrderSide } from '../../types';
+import { OptionData, OrderSide, TickData } from '../../types';
 import { formatCurrency, formatLargeNumber, formatPercentage, isATM, isITM } from '../../utils/formatters';
 import SimpleOrderModal from '../trading/SimpleOrderModal';
+import wsService from '../../services/websocket';
+import { throttleRAF } from '../../utils/throttle';
 
 interface OptionsChainProps {
     spotPrice: number;
@@ -19,16 +21,88 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
     const [orderSide, setOrderSide] = useState<OrderSide>(OrderSide.BUY);
     const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
     const tableBodyRef = React.useRef<HTMLTableSectionElement>(null);
+    
+    // Use refs to store option data - NO state updates to prevent re-renders
+    const callsRef = useRef<OptionData[]>(calls);
+    const putsRef = useRef<OptionData[]>(puts);
+    const strikesRef = useRef<number[]>([]);
+    // Safety: Track if component is mounted
+    const isMounted = useRef(true);
 
-    // Get unique strike prices
-    const strikes = Array.from(
-        new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
-    )
-        .filter((strike) => strike != null && !isNaN(strike))
-        .sort((a, b) => a - b);
+    // Update refs when props change and subscribe to option symbols
+    useEffect(() => {
+        callsRef.current = calls;
+        putsRef.current = puts;
+        
+        // Calculate strikes once from initial data
+        strikesRef.current = Array.from(
+            new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
+        )
+            .filter((strike) => strike != null && !isNaN(strike))
+            .sort((a, b) => a - b);
+        
+        // Subscribe to all option symbols when data loads
+        console.log(`📡 [OptionsChain] Subscribing to ${calls.length} calls and ${puts.length} puts`);
+        
+        [...calls, ...puts].forEach(option => {
+            if (option.instrument_token) {
+                wsService.subscribe(option.symbol, option.instrument_token);
+            }
+        });
+    }, [calls, puts]);
+
+    // Subscribe to WebSocket ticks for real-time option price updates (DOM only, no re-render)
+    // Uses RAF throttling like TradingView for smooth 60fps updates
+    useEffect(() => {
+        console.log('📡 [OptionsChain] Setting up WebSocket tick listener for live option prices');
+        
+        // Throttled DOM update using requestAnimationFrame for smooth rendering
+        const updateDOM = throttleRAF((symbol: string, price: number) => {
+            // Safety: Always check DOM elements exist before update
+            const priceElements = document.querySelectorAll(`[data-option-symbol="${symbol}"]`);
+            priceElements.forEach(el => {
+                const button = el as HTMLButtonElement;
+                if (button && isMounted.current) {
+                    button.textContent = formatCurrency(price);
+                }
+            });
+        });
+        
+        const unsubscribe = wsService.on('tick', (tickData: TickData) => {
+            // Safety: Check if component is still mounted
+            if (!isMounted.current) return;
+            
+            // Update refs immediately (data cache)
+            callsRef.current = callsRef.current.map(call => 
+                call.symbol === tickData.symbol ? { ...call, ltp: tickData.price } : call
+            );
+            
+            putsRef.current = putsRef.current.map(put => 
+                put.symbol === tickData.symbol ? { ...put, ltp: tickData.price } : put
+            );
+            
+            // Throttled DOM update (max 60fps like TradingView)
+            updateDOM(tickData.symbol, tickData.price);
+        });
+
+        return () => {
+            console.log('🧹 [OptionsChain] Cleaning up WebSocket tick listener');
+            isMounted.current = false;
+            unsubscribe();
+        };
+    }, []);
+
+    // Get unique strike prices - use ref value
+    const strikes = useMemo(() => {
+        return Array.from(
+            new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
+        )
+            .filter((strike) => strike != null && !isNaN(strike))
+            .sort((a, b) => a - b);
+    }, [calls, puts]);
 
     // Find the two nearest ATM strikes
-    const getATMStrikes = () => {
+    const atmStrikes = useMemo(() => {
         if (strikes.length === 0) return [];
 
         // Find strikes closest to spot price
@@ -38,9 +112,7 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
 
         // Return the 2 closest strikes
         return sorted.slice(0, 2).sort((a, b) => a - b);
-    };
-
-    const atmStrikes = getATMStrikes();
+    }, [strikes, spotPrice]);
 
     // Scroll to ATM strikes when component mounts or spotPrice changes
     React.useEffect(() => {
@@ -64,8 +136,8 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
         }
     }, [spotPrice, strikes.length]);
 
-    const getCallForStrike = (strike: number) => calls.find((c) => c.strike_price === strike);
-    const getPutForStrike = (strike: number) => puts.find((p) => p.strike_price === strike);
+    const getCallForStrike = (strike: number) => callsRef.current.find((c) => c.strike_price === strike);
+    const getPutForStrike = (strike: number) => putsRef.current.find((p) => p.strike_price === strike);
 
     const handleAction = (option: OptionData, action: 'BUY' | 'SELL' | 'CHART' | 'WATCHLIST', event?: React.MouseEvent) => {
         setSelectedStrike(option.strike_price);
@@ -216,6 +288,7 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
                                                 <button
                                                     onClick={() => handleAction(call, 'CHART')}
                                                     className="text-sm font-semibold text-green-500 hover:text-green-400 transition-colors"
+                                                    data-option-symbol={call.symbol}
                                                 >
                                                     {formatCurrency(call.ltp)}
                                                 </button>
@@ -250,6 +323,7 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
                                                 <button
                                                     onClick={() => handleAction(put, 'CHART')}
                                                     className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors"
+                                                    data-option-symbol={put.symbol}
                                                 >
                                                     {formatCurrency(put.ltp)}
                                                 </button>

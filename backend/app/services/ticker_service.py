@@ -45,22 +45,39 @@ class ZerodhaTickerService:
         """Setup KiteTicker callbacks"""
 
         def on_connect(ws, response):
-            logger.info("✓ KiteTicker connected")
+            logger.info("🎉 [KITE] ✓✓✓ KiteTicker connected to Zerodha! ✓✓✓")
+            logger.info(f"🎉 [KITE] Connection response: {response}")
             self.is_connected = True
 
             # Subscribe to instruments if any
-            if self.subscribed_tokens:
-                logger.info(f"Subscribing to {len(self.subscribed_tokens)} instruments")
-                ws.subscribe(self.subscribed_tokens)
-                ws.set_mode(ws.MODE_FULL, self.subscribed_tokens)
+            logger.info(f"📊 [KITE] Checking subscribed_tokens: {self.subscribed_tokens}")
+            logger.info(f"📊 [KITE] Number of tokens: {len(self.subscribed_tokens)}")
+            
+            if self.subscribed_tokens and len(self.subscribed_tokens) > 0:
+                logger.info(f"📡 [KITE] Subscribing to {len(self.subscribed_tokens)} instruments: {self.subscribed_tokens}")
+                try:
+                    ws.subscribe(list(self.subscribed_tokens))
+                    ws.set_mode(ws.MODE_FULL, list(self.subscribed_tokens))
+                    logger.info(f"✅ [KITE] Subscription sent to Zerodha successfully!")
+                except Exception as e:
+                    logger.error(f"❌ [KITE] Failed to subscribe: {e}")
+            else:
+                logger.error(f"❌ [KITE] CRITICAL: Connected but NO instruments queued!")
+                logger.error(f"❌ [KITE] subscribed_tokens is: {self.subscribed_tokens}")
+                logger.error(f"❌ [KITE] This will cause Zerodha to close the connection!")
 
         def on_ticks(ws, ticks):
             """Handle incoming ticks from market data WebSocket"""
-            if not ticks or not self.on_tick_callback:
+            # Reduced logging - only log when no ticks or no callback
+            if not ticks:
+                logger.warning("⚠️ [TICKER] No ticks in response")
+                return
+            if not self.on_tick_callback:
+                logger.warning("⚠️ [TICKER] No tick callback set!")
                 return
 
             try:
-                # Process each tick
+                # Process each tick (no logging per tick to avoid blocking)
                 for tick in ticks:
                     instrument_token = tick.get('instrument_token')
                     
@@ -92,11 +109,30 @@ class ZerodhaTickerService:
                 logger.error(f"Error processing ticks: {e}", exc_info=True)
 
         def on_close(ws, code, reason):
-            logger.warning(f"✗ KiteTicker closed: {code} - {reason}")
+            logger.warning(f"❌ [KITE] ✗✗✗ KiteTicker CLOSED ✗✗✗ Code: {code}, Reason: {reason}")
             self.is_connected = False
+            
+            # Attempt reconnection if we have subscriptions and not shutting down
+            if self.subscribed_tokens and not self.shutdown_requested:
+                logger.info(f"🔄 [KITE] Will attempt reconnection in 5 seconds...")
+                import time
+                import threading
+                def reconnect():
+                    time.sleep(5)
+                    if not self.shutdown_requested:
+                        logger.info(f"🔄 [KITE] Attempting to reconnect...")
+                        try:
+                            self.start()
+                        except Exception as e:
+                            logger.error(f"❌ [KITE] Reconnection failed: {e}")
+                threading.Thread(target=reconnect, daemon=True).start()
 
         def on_error(ws, code, reason):
-            logger.error(f"✗ KiteTicker error: {code} - {reason}")
+            logger.error(f"❌ [KITE] ✗✗✗ KiteTicker ERROR ✗✗✗ Code: {code}, Reason: {reason}")
+            # Don't reconnect on auth errors (1008)
+            if code == 1008:
+                logger.error(f"❌ [KITE] Authentication failed! Check your access_token.")
+                self.is_connected = False
 
         def on_reconnect(ws, attempts):
             logger.info(f"Reconnecting to KiteTicker (attempt {attempts})...")
@@ -123,24 +159,41 @@ class ZerodhaTickerService:
         Subscribe to an instrument.
         
         Args:
-            symbol: Trading symbol (e.g., "NIFTY 50")
-            instrument_token: Market API instrument token
+            symbol: Trading symbol
+            instrument_token: Zerodha instrument token
         """
-        # Store mapping
+        logger.info(f"📥 [TICKER] Subscribe request: {symbol} (token: {instrument_token})")
+        logger.info(f"📥 [TICKER] Current subscribed_tokens before: {self.subscribed_tokens}")
+        
+        # Store mappings
         self.symbol_to_token[symbol] = instrument_token
         self.token_to_symbol[instrument_token] = symbol
 
         # Add to subscribed tokens
         if instrument_token not in self.subscribed_tokens:
             self.subscribed_tokens.append(instrument_token)
+            logger.info(f"✅ [TICKER] Added token {instrument_token} to subscribed_tokens")
+        else:
+            logger.info(f"ℹ️ [TICKER] Token {instrument_token} already in subscribed_tokens")
 
         # If already connected, subscribe immediately
         if self.is_connected:
-            logger.info(f"Subscribing to {symbol} (token: {instrument_token})")
+            logger.info(f"✅ [TICKER] Already connected, subscribing to {symbol} (token: {instrument_token})")
             self.ticker.subscribe([instrument_token])
             self.ticker.set_mode(self.ticker.MODE_FULL, [instrument_token])
+            logger.info(f"✅ [TICKER] Subscription sent to Zerodha for {symbol}")
         else:
-            logger.info(f"Queued subscription for {symbol} (token: {instrument_token})")
+            logger.info(f"⏳ [TICKER] Not connected yet, queued subscription for {symbol} (token: {instrument_token})")
+            logger.info(f"📊 [TICKER] Current subscribed_tokens before start: {self.subscribed_tokens}")
+            # Start the ticker if not already started (lazy start)
+            if not self.shutdown_requested and len(self.subscribed_tokens) > 0:
+                logger.info(f"🚀 [TICKER] Starting KiteTicker with {len(self.subscribed_tokens)} instruments queued...")
+                try:
+                    self.start()
+                except Exception as e:
+                    logger.error(f"❌ [TICKER] Failed to start: {e}")
+            elif len(self.subscribed_tokens) == 0:
+                logger.error(f"❌ [TICKER] Cannot start - no instruments queued!")
 
     def unsubscribe(self, symbol: str):
         """
@@ -171,10 +224,12 @@ class ZerodhaTickerService:
     def start(self):
         """Start KiteTicker connection (threaded)"""
         if self.is_connected:
-            logger.warning("KiteTicker already connected")
+            logger.warning("⚠️ [TICKER] KiteTicker already connected")
             return
 
-        logger.info("Starting KiteTicker connection...")
+        logger.info("🚀 [TICKER] Starting KiteTicker connection...")
+        logger.info(f"🔑 [TICKER] Using API Key: {self.api_key[:20]}...")
+        logger.info(f"🎫 [TICKER] Using Access Token: {self.access_token[:20]}...")
         self.shutdown_requested = False
 
         try:
@@ -210,29 +265,48 @@ def get_ticker_service() -> Optional[ZerodhaTickerService]:
     """Get or create WebSocket Ticker service singleton"""
     global _ticker_service
     
+    logger.info(f"🔍 [TICKER] Checking credentials...")
+    logger.info(f"🔍 [TICKER] MARKET_API_KEY: '{settings.MARKET_API_KEY[:20] if settings.MARKET_API_KEY else 'EMPTY'}...'")
+    logger.info(f"🔍 [TICKER] MARKET_ACCESS_TOKEN: '{settings.MARKET_ACCESS_TOKEN[:20] if settings.MARKET_ACCESS_TOKEN else 'EMPTY'}...'")
+    
     # Only create if we have valid credentials (not empty strings)
     if (not settings.MARKET_API_KEY or 
         not settings.MARKET_ACCESS_TOKEN or
         settings.MARKET_API_KEY.strip() == "" or
         settings.MARKET_ACCESS_TOKEN.strip() == ""):
-        logger.warning("Market API credentials not configured - WebSocket Ticker not available")
+        logger.error("❌ [TICKER] Market API credentials not configured - WebSocket Ticker not available")
+        logger.error(f"❌ [TICKER] API Key present: {bool(settings.MARKET_API_KEY)}, Access Token present: {bool(settings.MARKET_ACCESS_TOKEN)}")
         return None
     
+    logger.info("✅ [TICKER] Credentials validated successfully")
+    
     if _ticker_service is None:
+        logger.info("🔧 [TICKER] Creating new ZerodhaTickerService instance...")
         _ticker_service = ZerodhaTickerService(
             api_key=settings.MARKET_API_KEY,
             access_token=settings.MARKET_ACCESS_TOKEN
         )
+        logger.info("✅ [TICKER] ZerodhaTickerService instance created")
+    else:
+        logger.info("♻️ [TICKER] Returning existing ZerodhaTickerService instance")
     
     return _ticker_service
 
 
 def start_ticker_service():
     """Start the KiteTicker service"""
+    logger.info("🎬 [TICKER] start_ticker_service() called")
     service = get_ticker_service()
-    if service and not service.is_active():
-        service.start()
-        logger.info("✓ KiteTicker service started")
+    if service:
+        logger.info(f"✅ [TICKER] Service obtained, is_active: {service.is_active()}")
+        if not service.is_active():
+            logger.info("🚀 [TICKER] Service not active, calling start()...")
+            service.start()
+            logger.info("✅ [TICKER] KiteTicker service started")
+        else:
+            logger.info("ℹ️ [TICKER] Service already active, skipping start()")
+    else:
+        logger.error("❌ [TICKER] No service available to start")
 
 
 def stop_ticker_service():

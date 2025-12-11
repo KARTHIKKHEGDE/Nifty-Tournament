@@ -3,12 +3,17 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Toaster } from 'react-hot-toast';
 import { useUserStore } from '../stores/userStore';
+import { useSymbolStore } from '../stores/symbolStore';
 import { initializeInstrumentCache } from '../utils/searchUtils';
+import wsService from '../services/websocket';
+import { getLocalStorage } from '../utils/formatters';
+import { TickData } from '../types';
 import '../styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
     const router = useRouter();
     const { loadUser, isAuthenticated } = useUserStore();
+    const { initializeWatchlist, watchlist } = useSymbolStore();
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -24,6 +29,56 @@ export default function App({ Component, pageProps }: AppProps) {
 
         initAuth();
     }, [loadUser]);
+
+    // Auto-subscribe to watchlist symbols for live prices
+    useEffect(() => {
+        if (!isAuthenticated || isLoading) return;
+
+        const setupLiveUpdates = async () => {
+            try {
+                // Initialize watchlist
+                initializeWatchlist();
+
+                // Get access token
+                const token = getLocalStorage<string>('access_token', '');
+                if (!token) {
+                    console.log('⚠️ [APP] No access token, skipping WebSocket subscription');
+                    return;
+                }
+
+                // Connect to WebSocket
+                console.log('🔌 [APP] Connecting to WebSocket for live prices...');
+                await wsService.connect(token);
+
+                // Subscribe to all watchlist symbols
+                const symbols = useSymbolStore.getState().watchlist;
+                console.log(`📡 [APP] Auto-subscribing to ${symbols.length} watchlist symbols`);
+                
+                symbols.forEach(item => {
+                    if (item.instrumentToken) {
+                        console.log(`📤 [APP] Subscribing to ${item.symbol} (${item.instrumentToken})`);
+                        wsService.subscribe(item.symbol, item.instrumentToken);
+                    }
+                });
+
+                // Listen for tick updates - NO store updates, components handle their own DOM updates
+                // This prevents global re-renders when ticks arrive
+                const unsubscribe = wsService.on('tick', (tickData: TickData) => {
+                    // Components listen to 'tick' events and update DOM directly
+                    // No state updates = zero re-renders = professional performance
+                    console.log(`📊 [APP] Tick received for ${tickData.symbol}: ${tickData.price}`);
+                });
+
+                return () => {
+                    unsubscribe();
+                };
+            } catch (error) {
+                console.error('❌ [APP] Failed to setup live updates:', error);
+            }
+        };
+
+        setupLiveUpdates();
+    }, [isAuthenticated, isLoading, initializeWatchlist]);
 
     useEffect(() => {
         // Only redirect after loading is complete

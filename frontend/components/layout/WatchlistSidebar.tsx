@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Search, TrendingUp, TrendingDown, X, Plus, BarChart2 } from 'lucide-react';
 import { useCombobox } from 'downshift';
 import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
@@ -9,7 +9,8 @@ import {
     SearchSuggestion
 } from '../../utils/searchUtils';
 import SimpleOrderModal from '../trading/SimpleOrderModal';
-import { OrderSide } from '../../types';
+import { OrderSide, TickData } from '../../types';
+import wsService from '../../services/websocket';
 
 interface WatchlistSidebarProps {
     onSymbolSelect: (symbol: WatchlistSymbol) => void;
@@ -25,6 +26,76 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
     const [selectedSymbol, setSelectedSymbol] = useState<WatchlistSymbol | null>(null);
     const [orderSide, setOrderSide] = useState<OrderSide>(OrderSide.BUY);
     const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
+    
+    // Ref for internal price tracking (no re-renders)
+    const watchlistData = useRef<Map<string, { ltp: number, prevLtp: number }>>(new Map());
+    // Safety: Track if component is mounted
+    const isMounted = useRef(true);
+
+    // Subscribe to WebSocket ticks for real-time watchlist price updates
+    // Direct DOM updates - ZERO re-renders like professional platforms
+    useEffect(() => {
+        console.log('📡 [WatchlistSidebar] Setting up WebSocket tick listener for watchlist');
+        
+        const unsubscribe = wsService.on('tick', (tickData: TickData) => {
+            // Safety: Check if component is still mounted
+            if (!isMounted.current) return;
+            if (!tickData || !tickData.symbol || !tickData.price) return;
+            
+            const symbol = tickData.symbol;
+            const price = tickData.price;
+            
+            // Update internal cache
+            const prevData = watchlistData.current.get(symbol);
+            const prevLtp = prevData?.ltp || price;
+            watchlistData.current.set(symbol, { ltp: price, prevLtp });
+            
+            // Direct DOM update - NO React re-render
+            // Safety: Always check DOM element exists before update
+            const priceElement = document.querySelector(`[data-watchlist-price="${symbol}"]`);
+            const changeElement = document.querySelector(`[data-watchlist-change="${symbol}"]`);
+            
+            if (priceElement) {
+                priceElement.textContent = `₹${price.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                })}`;
+            }
+            
+            if (changeElement && prevLtp > 0) {
+                const changePercent = ((price - prevLtp) / prevLtp) * 100;
+                const isPositive = changePercent >= 0;
+                
+                changeElement.textContent = `${isPositive ? '+' : ''}${changePercent.toFixed(2)}%`;
+                changeElement.className = `flex items-center gap-1 text-xs font-medium ${
+                    isPositive ? 'text-green-500' : 'text-red-500'
+                }`;
+                
+                // Update icon
+                const iconElement = changeElement.querySelector('svg');
+                if (iconElement) {
+                    iconElement.style.display = 'block';
+                }
+            }
+        });
+
+        return () => {
+            console.log('🧹 [WatchlistSidebar] Cleaning up WebSocket tick listener');
+            isMounted.current = false;
+            unsubscribe();
+        };
+    }, []);
+
+    // Subscribe to WebSocket when new symbols are added to watchlist
+    useEffect(() => {
+        // Subscribe to all watchlist symbols that have instrumentToken
+        watchlist.forEach(item => {
+            if (item.instrumentToken) {
+                console.log(`📤 [WatchlistSidebar] Ensuring subscription for ${item.symbol} (${item.instrumentToken})`);
+                wsService.subscribe(item.symbol, item.instrumentToken);
+            }
+        });
+    }, [watchlist]);
 
     // Fetch suggestions when search query changes
     React.useEffect(() => {
@@ -273,26 +344,30 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                             </div>
 
                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-white">
-                                    ₹{item.ltp.toLocaleString('en-IN', {
+                                <span 
+                                    className="text-sm font-semibold text-white" 
+                                    data-watchlist-price={item.symbol}
+                                >
+                                    ₹{(item.ltp || 0).toLocaleString('en-IN', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                     })}
                                 </span>
                                 <div
-                                    className={`flex items-center gap-1 text-xs font-medium ${item.changePercent >= 0
+                                    className={`flex items-center gap-1 text-xs font-medium ${(item.changePercent || 0) >= 0
                                         ? 'text-green-500'
                                         : 'text-red-500'
                                         }`}
+                                    data-watchlist-change={item.symbol}
                                 >
-                                    {item.changePercent >= 0 ? (
+                                    {(item.changePercent || 0) >= 0 ? (
                                         <TrendingUp className="w-3 h-3" />
                                     ) : (
                                         <TrendingDown className="w-3 h-3" />
                                     )}
                                     <span>
-                                        {item.changePercent >= 0 ? '+' : ''}
-                                        {item.changePercent.toFixed(2)}%
+                                        {(item.changePercent || 0) >= 0 ? '+' : ''}
+                                        {(item.changePercent || 0).toFixed(2)}%
                                     </span>
                                 </div>
                             </div>

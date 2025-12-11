@@ -70,24 +70,27 @@ async def startup_event():
         from app.websocket.handlers import broadcast_tick_data
         import asyncio
         
+        logger.info("🔧 [STARTUP] Initializing KiteTicker service (NOT starting yet)...")
         ticker_service = get_ticker_service()
         if ticker_service:
+            logger.info("✅ [STARTUP] KiteTicker service created successfully")
             # Get the main event loop
             loop = asyncio.get_event_loop()
             
             # Set callback to broadcast ticks to WebSocket clients
             def tick_callback(tick_data):
                 # Schedule coroutine in the main event loop from another thread
+                # Reduced logging - only log errors to prevent blocking
                 try:
                     asyncio.run_coroutine_threadsafe(broadcast_tick_data(tick_data), loop)
                 except Exception as e:
-                    logger.error(f"Error broadcasting tick data: {e}")
+                    logger.error(f"❌ [TICK CALLBACK] Error broadcasting tick data: {e}")
             
             ticker_service.set_tick_callback(tick_callback)
-            start_ticker_service()
-            logger.info("✓ KiteTicker service started")
+            logger.info("✅ [STARTUP] KiteTicker service initialized (will start on first subscription)")
         else:
-            logger.warning("⚠ KiteTicker service not available (missing credentials)")
+            logger.error("❌ [STARTUP] KiteTicker service NOT available - missing credentials!")
+            logger.error("❌ [STARTUP] Please check MARKET_API_KEY and MARKET_ACCESS_TOKEN in .env")
     except Exception as e:
         logger.error(f"Failed to start KiteTicker service: {e}")
     
@@ -109,6 +112,41 @@ async def shutdown_event():
         logger.info("✓ KiteTicker service stopped")
     except Exception as e:
         logger.error(f"Error stopping KiteTicker service: {e}")
+
+
+@app.get("/api/diagnostics")
+async def diagnostics():
+    """
+    Diagnostic endpoint to check WebSocket ticker service status.
+    """
+    from app.services.ticker_service import get_ticker_service
+    
+    ticker_service = get_ticker_service()
+    
+    if not ticker_service:
+        return JSONResponse({
+            "status": "error",
+            "ticker_service": "not initialized",
+            "message": "KiteTicker service is not available. Check MARKET_API_KEY and MARKET_ACCESS_TOKEN in .env",
+            "websocket_connections": len(manager.connections),
+            "subscribed_symbols": list(manager.subscriptions.keys()) if hasattr(manager, 'subscriptions') else []
+        }, status_code=503)
+    
+    return JSONResponse({
+        "status": "ok",
+        "ticker_service": {
+            "initialized": True,
+            "connected": ticker_service.is_connected,
+            "subscribed_tokens": list(ticker_service.subscribed_tokens) if hasattr(ticker_service, 'subscribed_tokens') else []
+        },
+        "websocket_manager": {
+            "active_connections": len(manager.connections),
+            "subscribed_symbols": list(manager.subscriptions.keys()) if hasattr(manager, 'subscriptions') else [],
+            "subscribers_per_symbol": {
+                symbol: len(users) for symbol, users in (manager.subscriptions.items() if hasattr(manager, 'subscriptions') else {}).items()
+            }
+        }
+    })
 
 
 @app.get("/")
@@ -209,17 +247,22 @@ async def websocket_endpoint(
             "message": "WebSocket connected successfully",
             "user_id": user_id
         }, user_id)
+        logger.info(f"📨 [WebSocket] Welcome message sent to user {user_id}")
         
         # Listen for messages
+        logger.info(f"👂 [WebSocket] Starting message loop for user {user_id}")
         while True:
+            logger.info(f"⏳ [WebSocket] Waiting for message from user {user_id}...")
             data = await websocket.receive_text()
+            logger.info(f"📬 [WebSocket] Received message from user {user_id}: {data}")
             await handle_message(user_id, data)
+            logger.info(f"✅ [WebSocket] Message handled for user {user_id}")
     
     except WebSocketDisconnect:
         manager.disconnect(user_id)
-        logger.info(f"WebSocket disconnected: User {user_id}")
+        logger.info(f"🔴 [WebSocket] User {user_id} disconnected gracefully")
     except Exception as e:
-        logger.error(f"WebSocket error for user {user_id}: {e}")
+        logger.error(f"❌ [WebSocket] Error for user {user_id}: {e}", exc_info=True)
         manager.disconnect(user_id)
 
 

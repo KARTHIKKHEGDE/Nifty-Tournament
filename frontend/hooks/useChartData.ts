@@ -105,10 +105,7 @@ export function useChartData(options: UseChartDataOptions = {}) {
                 return;
             }
 
-            // Connect WebSocket with token in query string
-            console.log(`🔌 [useChartData] Connecting WebSocket with token...`);
-            wsService.connect(token);
-
+            // WebSocket is already connected by _app.tsx - just subscribe
             console.log(`📊 [useChartData] WebSocket state: ${wsService.getConnectionState()}`);
 
             // Subscribe to symbol (will be queued if socket not open yet)

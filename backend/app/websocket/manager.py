@@ -100,23 +100,44 @@ class ConnectionManager:
     async def broadcast_to_symbol(self, symbol: str, message: dict):
         """
         Broadcast a message to all users subscribed to a symbol.
+        Non-blocking concurrent broadcast to prevent event loop starvation.
         
         Args:
             symbol: Trading symbol
             message: Message dictionary
         """
+        # No logging per broadcast to prevent blocking event loop
         if symbol not in self.subscriptions:
             return
         
+        if not self.subscriptions[symbol]:
+            return
+        
+        # Serialize message once
+        message_json = json.dumps(message)
         disconnected_users = []
+        
+        # Send to all subscribers concurrently (non-blocking)
+        import asyncio
+        tasks = []
         
         for user_id in self.subscriptions[symbol]:
             if user_id in self.active_connections:
-                try:
-                    await self.active_connections[user_id].send_text(json.dumps(message))
-                except Exception as e:
-                    logger.error(f"Error sending to user {user_id}: {e}")
-                    disconnected_users.append(user_id)
+                async def send_to_user(uid, conn):
+                    try:
+                        await conn.send_text(message_json)
+                    except Exception as e:
+                        logger.error(f"Error sending to user {uid}: {e}")
+                        return uid
+                    return None
+                
+                tasks.append(send_to_user(user_id, self.active_connections[user_id]))
+        
+        # Execute all sends concurrently
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Collect disconnected users
+            disconnected_users = [r for r in results if r is not None and not isinstance(r, Exception)]
         
         # Clean up disconnected users
         for user_id in disconnected_users:

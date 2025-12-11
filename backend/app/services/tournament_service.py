@@ -129,7 +129,12 @@ class TournamentService:
             user_id=user_id,
             entry_fee_paid=True,  # In production, integrate payment gateway
             starting_balance=tournament.starting_balance,
-            current_balance=tournament.starting_balance
+            initial_balance=tournament.starting_balance,  # Set initial_balance for API compatibility
+            current_balance=tournament.starting_balance,
+            total_pnl=0.0,
+            pnl=0.0,  # Set pnl for API compatibility
+            rank=None,
+            is_active=True
         )
         
         self.db.add(participant)

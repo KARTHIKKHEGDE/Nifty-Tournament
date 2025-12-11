@@ -1,5 +1,11 @@
 import api, { handleApiError } from './api';
-import { Tournament, TournamentParticipant, TournamentRanking } from '../types';
+import { Tournament, TournamentParticipant, TournamentRanking, PaperOrder, PaperPosition } from '../types';
+
+interface TournamentPnL {
+    unrealised: number;
+    realised: number;
+    total: number;
+}
 
 class TournamentService {
     /**
@@ -77,6 +83,93 @@ class TournamentService {
         try {
             const response = await api.get<TournamentRanking[]>('/api/tournaments/my-rankings');
             return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    // ==================== TOURNAMENT TRADING API ====================
+
+    /**
+     * Check if user has joined a tournament
+     */
+    async getParticipant(tournamentId: string): Promise<{ joined: boolean; participant?: TournamentParticipant; userId?: string }> {
+        try {
+            const response = await api.get(`/api/tournaments/${tournamentId}/participant`);
+            return response.data;
+        } catch (error: any) {
+            if (error.response?.status === 404) {
+                return { joined: false };
+            }
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Get user's P&L within tournament
+     */
+    async getTournamentPnl(tournamentId: string): Promise<TournamentPnL> {
+        try {
+            const response = await api.get(`/api/tournaments/${tournamentId}/pnl`);
+            return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Get user's positions within tournament
+     */
+    async getTournamentPositions(tournamentId: string): Promise<PaperPosition[]> {
+        try {
+            const response = await api.get(`/api/tournaments/${tournamentId}/positions`);
+            return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Get user's orders within tournament
+     */
+    async getTournamentOrders(tournamentId: string): Promise<PaperOrder[]> {
+        try {
+            const response = await api.get(`/api/tournaments/${tournamentId}/orders`);
+            return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Place order within tournament
+     */
+    async placeTournamentOrder(tournamentId: string, order: any): Promise<PaperOrder> {
+        try {
+            const response = await api.post(`/api/tournaments/${tournamentId}/orders`, order);
+            return response.data;
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Cancel order within tournament
+     */
+    async cancelTournamentOrder(tournamentId: string, orderId: number): Promise<void> {
+        try {
+            await api.delete(`/api/tournaments/${tournamentId}/orders/${orderId}`);
+        } catch (error) {
+            throw new Error(handleApiError(error));
+        }
+    }
+
+    /**
+     * Close position within tournament
+     */
+    async closeTournamentPosition(tournamentId: string, positionId: number): Promise<void> {
+        try {
+            await api.delete(`/api/tournaments/${tournamentId}/positions/${positionId}`);
         } catch (error) {
             throw new Error(handleApiError(error));
         }
