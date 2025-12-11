@@ -84,10 +84,6 @@ export const useUserStore = create<UserStore>((set) => ({
     },
 
     logout: () => {
-        // Disconnect WebSocket before logout
-        const wsService = require('../services/websocket').default;
-        wsService.disconnect();
-        
         authService.logout();
         set({
             user: null,

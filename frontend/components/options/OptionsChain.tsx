@@ -4,7 +4,6 @@ import { OptionData, OrderSide, TickData } from '../../types';
 import { formatCurrency, formatLargeNumber, formatPercentage, isATM, isITM } from '../../utils/formatters';
 import SimpleOrderModal from '../trading/SimpleOrderModal';
 import wsService from '../../services/websocket';
-import { throttleRAF } from '../../utils/throttle';
 
 interface OptionsChainProps {
     spotPrice: number;
@@ -22,24 +21,16 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
     const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
     const tableBodyRef = React.useRef<HTMLTableSectionElement>(null);
     
-    // Use refs to store option data - NO state updates to prevent re-renders
+    // Use refs to store option data and a version counter for minimal re-renders
     const callsRef = useRef<OptionData[]>(calls);
     const putsRef = useRef<OptionData[]>(puts);
-    const strikesRef = useRef<number[]>([]);
-    // Safety: Track if component is mounted
-    const isMounted = useRef(true);
+    const [dataVersion, setDataVersion] = useState(0);
 
     // Update refs when props change and subscribe to option symbols
     useEffect(() => {
         callsRef.current = calls;
         putsRef.current = puts;
-        
-        // Calculate strikes once from initial data
-        strikesRef.current = Array.from(
-            new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
-        )
-            .filter((strike) => strike != null && !isNaN(strike))
-            .sort((a, b) => a - b);
+        setDataVersion(v => v + 1);
         
         // Subscribe to all option symbols when data loads
         console.log(`📡 [OptionsChain] Subscribing to ${calls.length} calls and ${puts.length} puts`);
@@ -51,55 +42,51 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
         });
     }, [calls, puts]);
 
-    // Subscribe to WebSocket ticks for real-time option price updates (DOM only, no re-render)
-    // Uses RAF throttling like TradingView for smooth 60fps updates
+    // Subscribe to WebSocket ticks for real-time option price updates
     useEffect(() => {
         console.log('📡 [OptionsChain] Setting up WebSocket tick listener for live option prices');
         
-        // Throttled DOM update using requestAnimationFrame for smooth rendering
-        const updateDOM = throttleRAF((symbol: string, price: number) => {
-            // Safety: Always check DOM elements exist before update
-            const priceElements = document.querySelectorAll(`[data-option-symbol="${symbol}"]`);
-            priceElements.forEach(el => {
-                const button = el as HTMLButtonElement;
-                if (button && isMounted.current) {
-                    button.textContent = formatCurrency(price);
-                }
-            });
-        });
-        
         const unsubscribe = wsService.on('tick', (tickData: TickData) => {
-            // Safety: Check if component is still mounted
-            if (!isMounted.current) return;
+            let updated = false;
             
-            // Update refs immediately (data cache)
-            callsRef.current = callsRef.current.map(call => 
-                call.symbol === tickData.symbol ? { ...call, ltp: tickData.price } : call
-            );
+            // Update call option prices in-place
+            callsRef.current = callsRef.current.map(call => {
+                if (call.symbol === tickData.symbol) {
+                    updated = true;
+                    return { ...call, ltp: tickData.price };
+                }
+                return call;
+            });
             
-            putsRef.current = putsRef.current.map(put => 
-                put.symbol === tickData.symbol ? { ...put, ltp: tickData.price } : put
-            );
+            // Update put option prices in-place
+            putsRef.current = putsRef.current.map(put => {
+                if (put.symbol === tickData.symbol) {
+                    updated = true;
+                    return { ...put, ltp: tickData.price };
+                }
+                return put;
+            });
             
-            // Throttled DOM update (max 60fps like TradingView)
-            updateDOM(tickData.symbol, tickData.price);
+            // Only trigger re-render if data was actually updated
+            if (updated) {
+                setDataVersion(v => v + 1);
+            }
         });
 
         return () => {
             console.log('🧹 [OptionsChain] Cleaning up WebSocket tick listener');
-            isMounted.current = false;
             unsubscribe();
         };
     }, []);
 
-    // Get unique strike prices - use ref value
+    // Get unique strike prices using useMemo to prevent unnecessary recalculations
     const strikes = useMemo(() => {
         return Array.from(
-            new Set([...calls.map((c) => c.strike_price), ...puts.map((p) => p.strike_price)])
+            new Set([...callsRef.current.map((c) => c.strike_price), ...putsRef.current.map((p) => p.strike_price)])
         )
             .filter((strike) => strike != null && !isNaN(strike))
             .sort((a, b) => a - b);
-    }, [calls, puts]);
+    }, [dataVersion]);
 
     // Find the two nearest ATM strikes
     const atmStrikes = useMemo(() => {
@@ -288,7 +275,6 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
                                                 <button
                                                     onClick={() => handleAction(call, 'CHART')}
                                                     className="text-sm font-semibold text-green-500 hover:text-green-400 transition-colors"
-                                                    data-option-symbol={call.symbol}
                                                 >
                                                     {formatCurrency(call.ltp)}
                                                 </button>
@@ -323,7 +309,6 @@ export default function OptionsChain({ spotPrice, calls, puts, symbol = 'NIFTY',
                                                 <button
                                                     onClick={() => handleAction(put, 'CHART')}
                                                     className="text-sm font-semibold text-red-500 hover:text-red-400 transition-colors"
-                                                    data-option-symbol={put.symbol}
                                                 >
                                                     {formatCurrency(put.ltp)}
                                                 </button>

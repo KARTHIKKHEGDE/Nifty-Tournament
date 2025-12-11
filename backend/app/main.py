@@ -80,9 +80,10 @@ async def startup_event():
             # Set callback to broadcast ticks to WebSocket clients
             def tick_callback(tick_data):
                 # Schedule coroutine in the main event loop from another thread
-                # Reduced logging - only log errors to prevent blocking
+                logger.info(f"🔔 [TICK CALLBACK] Received tick: {tick_data.get('symbol')} @ {tick_data.get('last_price')}")
                 try:
                     asyncio.run_coroutine_threadsafe(broadcast_tick_data(tick_data), loop)
+                    logger.info(f"✅ [TICK CALLBACK] Broadcasted tick for {tick_data.get('symbol')}")
                 except Exception as e:
                     logger.error(f"❌ [TICK CALLBACK] Error broadcasting tick data: {e}")
             

@@ -50,25 +50,20 @@ class ZerodhaTickerService:
             self.is_connected = True
 
             # Subscribe to instruments if any
-            logger.info(f"📊 [KITE] Checking subscribed_tokens: {self.subscribed_tokens}")
-            logger.info(f"📊 [KITE] Number of tokens: {len(self.subscribed_tokens)}")
-            
-            if self.subscribed_tokens and len(self.subscribed_tokens) > 0:
+            if self.subscribed_tokens:
                 logger.info(f"📡 [KITE] Subscribing to {len(self.subscribed_tokens)} instruments: {self.subscribed_tokens}")
                 try:
-                    ws.subscribe(list(self.subscribed_tokens))
-                    ws.set_mode(ws.MODE_FULL, list(self.subscribed_tokens))
+                    ws.subscribe(self.subscribed_tokens)
+                    ws.set_mode(ws.MODE_FULL, self.subscribed_tokens)
                     logger.info(f"✅ [KITE] Subscription sent to Zerodha successfully!")
                 except Exception as e:
                     logger.error(f"❌ [KITE] Failed to subscribe: {e}")
             else:
-                logger.error(f"❌ [KITE] CRITICAL: Connected but NO instruments queued!")
-                logger.error(f"❌ [KITE] subscribed_tokens is: {self.subscribed_tokens}")
-                logger.error(f"❌ [KITE] This will cause Zerodha to close the connection!")
+                logger.error(f"❌ [KITE] CRITICAL: Connected but NO instruments queued! This should not happen.")
 
         def on_ticks(ws, ticks):
             """Handle incoming ticks from market data WebSocket"""
-            # Reduced logging - only log when no ticks or no callback
+            logger.info(f"📊 [TICKER] Received {len(ticks) if ticks else 0} ticks from Zerodha")
             if not ticks:
                 logger.warning("⚠️ [TICKER] No ticks in response")
                 return
@@ -77,8 +72,9 @@ class ZerodhaTickerService:
                 return
 
             try:
-                # Process each tick (no logging per tick to avoid blocking)
+                # Process each tick
                 for tick in ticks:
+                    logger.info(f"🔹 [TICKER] Processing tick: {tick}")
                     instrument_token = tick.get('instrument_token')
                     
                     # Get symbol from token
@@ -184,16 +180,13 @@ class ZerodhaTickerService:
             logger.info(f"✅ [TICKER] Subscription sent to Zerodha for {symbol}")
         else:
             logger.info(f"⏳ [TICKER] Not connected yet, queued subscription for {symbol} (token: {instrument_token})")
-            logger.info(f"📊 [TICKER] Current subscribed_tokens before start: {self.subscribed_tokens}")
             # Start the ticker if not already started (lazy start)
-            if not self.shutdown_requested and len(self.subscribed_tokens) > 0:
-                logger.info(f"🚀 [TICKER] Starting KiteTicker with {len(self.subscribed_tokens)} instruments queued...")
+            if not self.shutdown_requested:
+                logger.info(f"🚀 [TICKER] Starting KiteTicker due to first subscription...")
                 try:
                     self.start()
                 except Exception as e:
                     logger.error(f"❌ [TICKER] Failed to start: {e}")
-            elif len(self.subscribed_tokens) == 0:
-                logger.error(f"❌ [TICKER] Cannot start - no instruments queued!")
 
     def unsubscribe(self, symbol: str):
         """

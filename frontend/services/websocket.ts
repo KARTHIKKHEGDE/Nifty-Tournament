@@ -1,5 +1,4 @@
 import { WSMessage, WSMessageType, TickData } from '../types';
-import { perfMonitor } from '../utils/performance';
 
 // Simple event emitter for local (non-network) events
 class LocalEmitter {
@@ -39,8 +38,6 @@ class WebSocketService {
     private reconnectAttempts = 0;
     private reconnectTimer: any = null;
     private currentToken?: string; // store token for reconnect
-    private intentionalClose = false; // Track if disconnect was intentional
-    private maxReconnectAttempts = 5; // Limit reconnection attempts
     private localEmitter = new LocalEmitter(); // For optimistic UI updates
     private rooms: Set<string> = new Set(); // Track joined rooms
 
@@ -50,9 +47,6 @@ class WebSocketService {
         if (token) {
             this.currentToken = token;
         }
-
-        // Reset intentional close flag when explicitly connecting
-        this.intentionalClose = false;
 
         // Avoid multiple open sockets - check for OPEN or CONNECTING
         if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
@@ -110,24 +104,12 @@ class WebSocketService {
 
             this.ws.onclose = (ev) => {
                 console.warn(`🔌 [WebSocket] Disconnected (code: ${ev.code}, reason: ${ev.reason || 'none'})`);
-                
-                // Only attempt reconnect if:
-                // 1. Not an intentional close
-                // 2. Haven't exceeded max attempts
-                // 3. Have a token to reconnect with
-                if (!this.intentionalClose && this.reconnectAttempts < this.maxReconnectAttempts && finalToken) {
-                    this._scheduleReconnect(finalToken);
-                } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-                    console.error(`❌ [WebSocket] Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
-                } else if (!finalToken) {
-                    console.warn('⚠️ [WebSocket] No token available for reconnection');
-                }
+                // attempt reconnect with backoff
+                this._scheduleReconnect(finalToken);
             };
         } catch (err) {
             console.error('❌ [WebSocket] connect error:', err);
-            if (this.reconnectAttempts < this.maxReconnectAttempts && finalToken) {
-                this._scheduleReconnect(finalToken);
-            }
+            this._scheduleReconnect(finalToken);
         }
     }
 
@@ -164,12 +146,6 @@ class WebSocketService {
 
     // Subscribe stores symbol AND instrument_token, sends subscribe message (queued if needed)
     subscribe(symbol: string, instrumentToken?: number) {
-        // Check if already subscribed to avoid duplicate messages
-        if (this.subscriptions.has(symbol) && this.subscriptions.get(symbol) === instrumentToken) {
-            console.log(`[WebSocket] Already subscribed to: ${symbol}, skipping`);
-            return;
-        }
-        
         console.log(`[WebSocket] Subscribing to: ${symbol} (token: ${this.currentToken ? 'present' : 'none'}, instrument: ${instrumentToken || 'none'})`);
         if (instrumentToken) {
             this.subscriptions.set(symbol, instrumentToken);
@@ -223,11 +199,6 @@ class WebSocketService {
     }
 
     private handleMessage(message: any) {
-        // Track tick performance
-        if (perfMonitor.enabled && message.type === 'tick' && message.data?.symbol) {
-            perfMonitor.recordTick(message.data.symbol);
-        }
-
         const callbacks = this.listeners.get(message.type);
         if (callbacks && callbacks.length > 0) {
             console.log(`[WebSocket] Dispatching message type '${message.type}' to ${callbacks.length} listener(s)`);
@@ -243,41 +214,14 @@ class WebSocketService {
             console.log('[WebSocket] Reconnect already scheduled, skipping');
             return;
         }
-        
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error(`❌ [WebSocket] Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping.`);
-            return;
-        }
-        
         this.reconnectAttempts += 1;
         const delay = Math.min(30000, 1000 * Math.pow(1.5, this.reconnectAttempts));
-        console.log(`⏰ [WebSocket] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        console.log(`⏰ [WebSocket] Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts})`);
         this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
-            console.log(`🔄 [WebSocket] Attempting reconnect (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+            console.log(`🔄 [WebSocket] Attempting reconnect (attempt ${this.reconnectAttempts})`);
             this.connect(token);
         }, delay);
-    }
-
-    // Disconnect intentionally (prevents auto-reconnect)
-    disconnect() {
-        console.log('🔌 [WebSocket] Intentional disconnect');
-        this.intentionalClose = true;
-        
-        // Clear reconnect timer
-        if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
-            this.reconnectTimer = null;
-        }
-        
-        // Close WebSocket
-        if (this.ws) {
-            this.ws.close(1000, 'Client disconnect');
-            this.ws = null;
-        }
-        
-        // Clear token
-        this.currentToken = undefined;
     }
 
     // Get connection state for debugging

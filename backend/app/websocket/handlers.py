@@ -189,7 +189,7 @@ async def broadcast_tick_data(tick_data: Dict[str, Any]):
         tick_data: Tick data dictionary from market data API
     """
     symbol = tick_data.get("symbol")
-    # Reduced logging - only log errors to prevent blocking
+    logger.info(f"📢 [BROADCAST] broadcast_tick_data called for {symbol}")
     
     if not symbol:
         logger.warning(f"⚠️ [BROADCAST] No symbol in tick data, skipping")
@@ -211,16 +211,12 @@ async def broadcast_tick_data(tick_data: Dict[str, Any]):
     # Process tick and check if a candle is completed
     completed_candle = candle_builder.process_tick(symbol, price, volume, timestamp)
     
-    # Broadcast messages concurrently to prevent blocking login requests
-    import asyncio
-    tasks = []
-    
     # Broadcast live tick data
     tick_message = {
         "type": "tick",
         "data": tick_data
     }
-    tasks.append(manager.broadcast_to_symbol(symbol, tick_message))
+    await manager.broadcast_to_symbol(symbol, tick_message)
     
     # If a candle was completed, broadcast it
     if completed_candle:
@@ -231,7 +227,7 @@ async def broadcast_tick_data(tick_data: Dict[str, Any]):
                 "candle": completed_candle
             }
         }
-        tasks.append(manager.broadcast_to_symbol(symbol, candle_message))
+        await manager.broadcast_to_symbol(symbol, candle_message)
         logger.info(f"Broadcasted completed candle for {symbol}")
     
     # Also broadcast current (incomplete) candle for live updates
@@ -244,8 +240,4 @@ async def broadcast_tick_data(tick_data: Dict[str, Any]):
                 "candle": current_candle
             }
         }
-        tasks.append(manager.broadcast_to_symbol(symbol, current_candle_message))
-    
-    # Execute all broadcasts concurrently (non-blocking)
-    if tasks:
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await manager.broadcast_to_symbol(symbol, current_candle_message)

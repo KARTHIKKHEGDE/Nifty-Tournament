@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import PositionsTable from '../../components/trading/PositionsTable';
 import Card from '../../components/common/Card';
@@ -7,6 +7,7 @@ import { formatCurrency, formatPercentage, getPriceColor } from '../../utils/for
 import tradingService from '../../services/tradingService';
 import { useUserStore } from '../../stores/userStore';
 import Loader from '../../components/common/Loader';
+import { throttle } from '../../utils/throttle';
 
 export default function PortfolioPage() {
     const { wallet } = useUserStore();
@@ -31,11 +32,14 @@ export default function PortfolioPage() {
         }
     };
 
+    // Throttle to prevent overlapping requests
+    const throttledLoad = useRef(throttle(loadPortfolio, 10000));
+
     useEffect(() => {
         loadPortfolio();
 
-        // Refresh every 10 seconds
-        const interval = setInterval(loadPortfolio, 10000);
+        // Refresh every 10 seconds with throttling
+        const interval = setInterval(() => throttledLoad.current(), 10000);
         return () => clearInterval(interval);
     }, []);
 

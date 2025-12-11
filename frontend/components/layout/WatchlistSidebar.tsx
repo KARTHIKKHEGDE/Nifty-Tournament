@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Search, TrendingUp, TrendingDown, X, Plus, BarChart2 } from 'lucide-react';
 import { useCombobox } from 'downshift';
 import { useSymbolStore, WatchlistSymbol } from '../../stores/symbolStore';
@@ -26,62 +26,26 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
     const [selectedSymbol, setSelectedSymbol] = useState<WatchlistSymbol | null>(null);
     const [orderSide, setOrderSide] = useState<OrderSide>(OrderSide.BUY);
     const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
-    
-    // Ref for internal price tracking (no re-renders)
-    const watchlistData = useRef<Map<string, { ltp: number, prevLtp: number }>>(new Map());
-    // Safety: Track if component is mounted
-    const isMounted = useRef(true);
 
     // Subscribe to WebSocket ticks for real-time watchlist price updates
-    // Direct DOM updates - ZERO re-renders like professional platforms
     useEffect(() => {
         console.log('📡 [WatchlistSidebar] Setting up WebSocket tick listener for watchlist');
         
         const unsubscribe = wsService.on('tick', (tickData: TickData) => {
-            // Safety: Check if component is still mounted
-            if (!isMounted.current) return;
-            if (!tickData || !tickData.symbol || !tickData.price) return;
-            
-            const symbol = tickData.symbol;
-            const price = tickData.price;
-            
-            // Update internal cache
-            const prevData = watchlistData.current.get(symbol);
-            const prevLtp = prevData?.ltp || price;
-            watchlistData.current.set(symbol, { ltp: price, prevLtp });
-            
-            // Direct DOM update - NO React re-render
-            // Safety: Always check DOM element exists before update
-            const priceElement = document.querySelector(`[data-watchlist-price="${symbol}"]`);
-            const changeElement = document.querySelector(`[data-watchlist-change="${symbol}"]`);
-            
-            if (priceElement) {
-                priceElement.textContent = `₹${price.toLocaleString('en-IN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                })}`;
-            }
-            
-            if (changeElement && prevLtp > 0) {
-                const changePercent = ((price - prevLtp) / prevLtp) * 100;
-                const isPositive = changePercent >= 0;
-                
-                changeElement.textContent = `${isPositive ? '+' : ''}${changePercent.toFixed(2)}%`;
-                changeElement.className = `flex items-center gap-1 text-xs font-medium ${
-                    isPositive ? 'text-green-500' : 'text-red-500'
-                }`;
-                
-                // Update icon
-                const iconElement = changeElement.querySelector('svg');
-                if (iconElement) {
-                    iconElement.style.display = 'block';
-                }
+            // Update watchlist prices in real-time via store
+            if (tickData && tickData.symbol && tickData.last_price) {
+                useSymbolStore.setState((state) => ({
+                    watchlist: state.watchlist.map(item => 
+                        item.symbol === tickData.symbol
+                            ? { ...item, ltp: tickData.last_price }
+                            : item
+                    )
+                }));
             }
         });
 
         return () => {
             console.log('🧹 [WatchlistSidebar] Cleaning up WebSocket tick listener');
-            isMounted.current = false;
             unsubscribe();
         };
     }, []);
@@ -344,30 +308,26 @@ export default function WatchlistSidebar({ onSymbolSelect }: WatchlistSidebarPro
                             </div>
 
                             <div className="flex items-center justify-between">
-                                <span 
-                                    className="text-sm font-semibold text-white" 
-                                    data-watchlist-price={item.symbol}
-                                >
-                                    ₹{(item.ltp || 0).toLocaleString('en-IN', {
+                                <span className="text-sm font-semibold text-white">
+                                    ₹{item.ltp.toLocaleString('en-IN', {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                     })}
                                 </span>
                                 <div
-                                    className={`flex items-center gap-1 text-xs font-medium ${(item.changePercent || 0) >= 0
+                                    className={`flex items-center gap-1 text-xs font-medium ${item.changePercent >= 0
                                         ? 'text-green-500'
                                         : 'text-red-500'
                                         }`}
-                                    data-watchlist-change={item.symbol}
                                 >
-                                    {(item.changePercent || 0) >= 0 ? (
+                                    {item.changePercent >= 0 ? (
                                         <TrendingUp className="w-3 h-3" />
                                     ) : (
                                         <TrendingDown className="w-3 h-3" />
                                     )}
                                     <span>
-                                        {(item.changePercent || 0) >= 0 ? '+' : ''}
-                                        {(item.changePercent || 0).toFixed(2)}%
+                                        {item.changePercent >= 0 ? '+' : ''}
+                                        {item.changePercent.toFixed(2)}%
                                     </span>
                                 </div>
                             </div>

@@ -7,7 +7,6 @@ import { useSymbolStore } from '../stores/symbolStore';
 import { initializeInstrumentCache } from '../utils/searchUtils';
 import wsService from '../services/websocket';
 import { getLocalStorage } from '../utils/formatters';
-import { TickData } from '../types';
 import '../styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -61,12 +60,17 @@ export default function App({ Component, pageProps }: AppProps) {
                     }
                 });
 
-                // Listen for tick updates - NO store updates, components handle their own DOM updates
-                // This prevents global re-renders when ticks arrive
-                const unsubscribe = wsService.on('tick', (tickData: TickData) => {
-                    // Components listen to 'tick' events and update DOM directly
-                    // No state updates = zero re-renders = professional performance
-                    console.log(`📊 [APP] Tick received for ${tickData.symbol}: ${tickData.price}`);
+                // Listen for tick updates to update watchlist prices
+                const unsubscribe = wsService.on('tick', (tickData: any) => {
+                    if (tickData && tickData.symbol && tickData.last_price) {
+                        useSymbolStore.setState((state) => ({
+                            watchlist: state.watchlist.map(item => 
+                                item.symbol === tickData.symbol
+                                    ? { ...item, ltp: tickData.last_price }
+                                    : item
+                            )
+                        }));
+                    }
                 });
 
                 return () => {
